@@ -406,7 +406,7 @@
     "Insulin Age": "Insulinalder (iage)",
     "Temporary target": "Mildertidig mål",
     "Reason": "Årsak",
-    "Eating soon": "Snart tid for mat",
+    "Eating soon": "Snart mat",
     "Top": "Øverst",
     "Bottom": "Nederst",
     "Activity": "Aktivitet",
@@ -626,7 +626,7 @@
     "Basal average": "Gjennomsnitt basal",
     "Base basal average:": "Programmert gj.snitt basal",
     "Carbs average": "Gjennomsnitt karbohydrater",
-    "Eating Soon": "Spiser snart",
+    "Eating Soon": "Snart mat",
     "Last entry {0} minutes ago": "Siste registrering var for {0} minutter siden",
     "change": "endre",
     "Speech": "Tale",
@@ -703,5 +703,6 @@
     "Security issue": "Sikkerhetsproblem",
     "Weak API_SECRET detected. Please use a mix of small and CAPITAL letters, numbers and non-alphanumeric characters such as !#%&/ to reduce the risk of unauthorized access. The minimum length of the API_SECRET is 12 characters.": "Svakt API_SECRET oppdaget. Vennligst bruk en blanding av små og STORE bokstaver, tall og ikke-alfanumeriske tegn, som !#%&/ for å redusere risikoen for uautorisert tilgang. Minimumslengden på API_SECRET er 12 tegn.",
     "less than 1": "mindre enn 1",
-    "MongoDB password and API_SECRET match. This is a really bad idea. Please change both and do not reuse passwords across the system.": "MongoDB passord og API_SECRET samsvarer. Dette er en veldig dårlig idé. Vennligst endre begge og ikke gjenbruk samme passord over alt i hele systemet."
+    "MongoDB password and API_SECRET match. This is a really bad idea. Please change both and do not reuse passwords across the system.": "MongoDB passord og API_SECRET samsvarer. Dette er en veldig dårlig idé. Vennligst endre begge og ikke gjenbruk samme passord over alt i hele systemet.",
+    "Hypo TT": "Følingsmat"
 }
