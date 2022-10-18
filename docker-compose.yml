@@ -7,7 +7,7 @@ services:
       - ${NS_MONGO_DATA_DIR:-./mongo-data}:/data/db:cached
 
   nightscout:
-    image: nightscout/cgm-remote-monitor:latest
+    image: bjornoleh/nightscout:latest
     container_name: nightscout
     restart: always
     depends_on:
