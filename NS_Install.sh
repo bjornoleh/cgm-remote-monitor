@@ -48,21 +48,21 @@ sudo apt-get -y install jq
 echo -e "use Nightscout\ndb.createUser({user: \"username\", pwd: \"password\", roles:[\"readWrite\"]})\nquit()" | mongo
 echo -e "use admin\ndb.createUser({ user: \"mongoadmin\" , pwd: \"mongoadmin\", roles: [\"userAdminAnyDatabase\", \"dbAdminAnyDatabase\", \"readWriteAnyDatabase\"]})\nquit()" | mongo
 
-echo "Installing Node js"
+#echo "Installing Node js" ##skipping install of node and NS for now
 
-sudo apt-get install -y nodejs npm
-sudo apt -y autoremove
-cd /srv
+#sudo apt-get install -y nodejs npm
+#sudo apt -y autoremove
+#cd /srv
 
-echo "Installing Nightscout"
+#echo "Installing Nightscout"
 
-sudo git clone https://github.com/jamorham/nightscout-vps.git
-cd nightscout-vps
-sudo git checkout vps-1
-sudo git pull
+#sudo git clone https://github.com/jamorham/nightscout-vps.git
+#cd nightscout-vps
+#sudo git checkout vps-1
+#sudo git pull
 
-sudo npm install
-sudo npm run generate-keys
+#sudo npm install
+#sudo npm run generate-keys
 
 for loop in 1 2 3 4 5 6 7 8 9
 do
