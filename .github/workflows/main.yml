@@ -4,11 +4,11 @@ on:
   push:
     branches:
       - master
-      - dev
+      - bo
   pull_request:
     branches:
       - master
-      - dev
+      - bo
 
 jobs:
   test:
@@ -44,10 +44,10 @@ jobs:
     name: Publish to Docker Hub
     needs: test
     runs-on: ubuntu-latest
-    if: (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/dev') && github.repository_owner == 'nightscout'
+    if: (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/bo') && github.repository_owner == 'bjornoleh'
     env:
-      DOCKER_IMAGE: nightscout/cgm-remote-monitor
-      PLATFORMS: linux/amd64,linux/arm64
+      DOCKER_IMAGE: bjornoleh/nightscout
+      PLATFORMS: linux/amd64
     steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -61,8 +61,8 @@ jobs:
       - name: Clean git Checkout
         if: success()
         uses: actions/checkout@v2
-      - name: Build, tag and push the dev Docker image
-        if: success() && github.ref == 'refs/heads/dev'
+      - name: Build, tag and push the bo Docker image
+        if: success() && github.ref == 'refs/heads/bo'
         uses: docker/build-push-action@v2
         with:
           context: .
@@ -70,8 +70,8 @@ jobs:
           no-cache: true
           platforms: ${{ env.PLATFORMS }}
           tags: |
-            ${{ env.DOCKER_IMAGE }}:dev_${{ github.sha }}
-            ${{ env.DOCKER_IMAGE }}:latest_dev
+            ${{ env.DOCKER_IMAGE }}:bo_${{ github.sha }}
+            ${{ env.DOCKER_IMAGE }}:latest
 
       - name: Get Nightscout release version
         if: success() && github.ref == 'refs/heads/master'
