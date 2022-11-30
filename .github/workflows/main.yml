@@ -13,7 +13,6 @@ on:
 jobs:
   publish:
     name: Publish to Docker Hub
-    needs: test
     runs-on: ubuntu-latest
     if: (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/bo') && github.repository_owner == 'bjornoleh'
     env:
