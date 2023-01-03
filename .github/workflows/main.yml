@@ -39,3 +39,4 @@ jobs:
           platforms: ${{ env.PLATFORMS }}
           tags: |
             ${{ env.DOCKER_IMAGE }}:bo-dev_${{ github.sha }}
+            ${{ env.DOCKER_IMAGE }}:latest-dev
