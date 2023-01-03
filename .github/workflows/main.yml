@@ -1,20 +1,18 @@
-name: Publish Docker image
+name: Publish bo-dev Docker image
 
 on:
   push:
     branches:
-      - master
-      - bo
+      - bo-dev
   pull_request:
     branches:
-      - master
-      - bo
+      - bo-dev
 
 jobs:
   publish:
     name: Publish to Docker Hub
     runs-on: ubuntu-latest
-    if: (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/bo') && github.repository_owner == 'bjornoleh'
+    if: (github.ref == 'refs/heads/bo-dev') && github.repository_owner == 'bjornoleh'
     env:
       DOCKER_IMAGE: bjornoleh/nightscout
       PLATFORMS: linux/amd64
@@ -31,8 +29,8 @@ jobs:
       - name: Clean git Checkout
         if: success()
         uses: actions/checkout@v2
-      - name: Build, tag and push the bo Docker image
-        if: success() && github.ref == 'refs/heads/bo'
+      - name: Build, tag and push the bo-dev Docker image
+        if: success() && github.ref == 'refs/heads/bo-dev'
         uses: docker/build-push-action@v2
         with:
           context: .
@@ -40,20 +38,4 @@ jobs:
           no-cache: true
           platforms: ${{ env.PLATFORMS }}
           tags: |
-            ${{ env.DOCKER_IMAGE }}:bo_${{ github.sha }}
-            ${{ env.DOCKER_IMAGE }}:latest
-
-      - name: Get Nightscout release version
-        if: success() && github.ref == 'refs/heads/master'
-        id: package-version
-        uses: martinbeentjes/npm-get-version-action@master
-      - name: Build, tag and push the master Docker image
-        if: success() && github.ref == 'refs/heads/master'
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          push: true
-          no-cache: true
-          platforms: ${{ env.PLATFORMS }}
-          tags: |
-            ${{ env.DOCKER_IMAGE }}:${{ steps.package-version.outputs.current-version }}
+            ${{ env.DOCKER_IMAGE }}:bo-dev_${{ github.sha }}
