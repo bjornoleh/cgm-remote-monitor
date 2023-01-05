@@ -149,6 +149,7 @@ a, a:visited, a:link {
   text-align: center;
   white-space: normal;
   padding-right: 20px;
+  width: 50%;
 }
 
 .urgent .bgButton {
