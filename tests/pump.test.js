@@ -3,7 +3,7 @@
 var should = require('should');
 const cloneDeep = require('../lib/utils/clone');
 const helper = require('./inithelper')();
-const moment = helper.ctx.moment;
+const dayjs = helper.ctx.dayjs;
 
 var top_ctx = helper.getctx();
 top_ctx.settings = require('../lib/settings')();
@@ -53,7 +53,7 @@ var statuses = [{
 
 var profileData =
 {
-  'timezone': moment.tz.guess()
+  'timezone': dayjs.tz.guess()
 };
 
 var statuses2 = [{
@@ -92,14 +92,14 @@ var statuses2 = [{
   }
 }];
 
-var now = moment(statuses[1].created_at);
+var now = dayjs(statuses[1].created_at);
 
 statuses.forEach(function updateMills (status) {
-  status.mills = moment(status.created_at).valueOf();
+  status.mills = dayjs(status.created_at).valueOf();
 });
 
 statuses2.forEach(function updateMills (status) {
-  status.mills = moment(status.created_at).valueOf();
+  status.mills = dayjs(status.created_at).valueOf();
 });
 
 describe('pump', function ( ) {
