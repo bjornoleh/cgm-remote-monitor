@@ -373,9 +373,9 @@ describe('Entries REST api', function ( ) {
             .expect(200)
             .expect(function (response) {
               var entry = response.body[0];
+              entry.utcOffset.should.equal(-420);
               response.body.length.should.equal(2);
               entry.sgv.should.equal('200');
-              entry.utcOffset.should.equal(-420);
             })
             .end(function (err) {
               if (err) {

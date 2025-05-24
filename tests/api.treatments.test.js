@@ -3,7 +3,7 @@
 var request = require('supertest');
 var should = require('should');
 var language = require('../lib/language')();
-var _dayjs = require('dayjs');
+const _dayjs = require('../lib/utils/dayjs');
 
 describe('Treatment API', function ( ) {
   this.timeout(10000);
