@@ -61,7 +61,7 @@ if (process.env.NODE_ENV === 'development') {
     emitWarning: true,
     failOnError: false,
     failOnWarning: false,
-    formatter: require('eslint').CLIEngine.getFormatter('stylish'),
+    formatter: 'stylish',
     overrideConfig: {
       globals: {
         '$': 'writeable'
