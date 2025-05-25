@@ -1,6 +1,5 @@
 "use strict";
 
-const crypto = require("crypto");
 const Storages = require("js-storage");
 
 class HashAuth {
@@ -227,8 +226,7 @@ class HashAuth {
    * @param {string} [apisecret]
    * @param {boolean} [storeapisecret]
    * @param {(close: boolean) => void} [callback]
-   */
-  processSecret(apisecret, storeapisecret, callback) {
+   */  async processSecret(apisecret, storeapisecret, callback) {
     const translate = this.client.translate;
 
     this.apisecret = apisecret ?? null;
@@ -239,27 +237,35 @@ class HashAuth {
       return;
     }
 
-    const shasum = crypto.createHash("sha1");
-    shasum.update(this.apisecret);
-    this.apisecrethash = shasum.digest("hex");
+    try {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(this.apisecret);
+      const hashBuffer = await window.crypto.subtle.digest('SHA-1', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer)); // convert buffer to byte array
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join(''); // convert bytes to hex string
+      this.apisecrethash = hashHex;
 
-    this.verifyAuthentication((isOk) => {
-      if (!isOk) {
-        alert(translate("Wrong API secret"));
-        if (callback) callback(false);
-        return;
-      }
+      this.verifyAuthentication((isOk) => {
+        if (!isOk) {
+          alert(translate("Wrong API secret"));
+          if (callback) callback(false);
+          return;
+        }
 
-      if (this.storeapisecret) {
-        Storages.localStorage.set("apisecrethash", this.apisecrethash);
-        // TODO show dialog first, then reload
-        if (this.tokenauthenticated) this.client.browserUtils.reload();
-      }
+        if (this.storeapisecret) {
+          Storages.localStorage.set("apisecrethash", this.apisecrethash);
+          // TODO show dialog first, then reload
+          if (this.tokenauthenticated) this.client.browserUtils.reload();
+        }
 
-      $("#authentication_placeholder").html(this.inlineCode());
+        $("#authentication_placeholder").html(this.inlineCode());
 
-      if (callback) callback(true);
-    });
+        if (callback) callback(true);
+      });
+    } catch (error) {
+      console.error('Error hashing API secret:', error);
+      if (callback) callback(false);
+    }
   }
 
   inlineCode() {

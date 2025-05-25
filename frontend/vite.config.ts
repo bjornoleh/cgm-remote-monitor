@@ -43,10 +43,8 @@ export default defineConfig({
       $: "jquery",
       jQuery: "jquery",
     }),
-  ],
-  resolve: {
+  ],  resolve: {
     alias: {
-      crypto: "crypto-browserify",
       stream: "stream-browserify",
     },
   },
