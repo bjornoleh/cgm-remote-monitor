@@ -1,6 +1,8 @@
 <!-- SvelteKit Profile Editor Component -->
 <script lang="ts">
   import { enhance } from "$app/forms";
+  import { Button } from "$lib/components/ui/button";
+  import { Save } from "lucide-svelte";
   import type { PageData, ActionData } from "./$types";
   import ProfileHeader from "./ProfileHeader.svelte";
   import DatabaseRecords from "./DatabaseRecords.svelte";
@@ -479,16 +481,12 @@
               onUpdate={updateProfile}
             />
           </div>
-
           <!-- Save Button -->
           <div class="flex justify-end">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-            >
-              💾 Save Profile
-            </button>
+            <Button type="submit" disabled={isSubmitting} size="lg">
+              <Save class="w-4 h-4" />
+              Save Profile
+            </Button>
           </div>
         </form>
       {:else}

@@ -41,6 +41,7 @@
     "jquery.tooltips": "^1.0.0",
     "js-storage": "^1.1.0",
     "lodash": "^4.17.21",
+    "lucide-svelte": "^0.511.0",
     "memory-cache": "^0.2.0",
     "moment-timezone": "^0.5.46",
     "parse-duration": "^1.1.0",

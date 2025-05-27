@@ -1,7 +1,6 @@
 import { error, fail } from '@sveltejs/kit';
-import type { PageServerLoad, Actions } from './$types.js';
 
-export const load: PageServerLoad = async ({ fetch }) => {
+export const load = async ({ fetch }) => {
   try {
     // Load profile records
     const profileResponse = await fetch('/api/v1/profile/');
@@ -36,7 +35,7 @@ export const load: PageServerLoad = async ({ fetch }) => {
   }
 };
 
-export const actions: Actions = {
+export const actions = {
   save: async ({ request, fetch }) => {
     try {
       const formData = await request.formData();

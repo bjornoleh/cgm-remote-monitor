@@ -46,12 +46,3 @@ export interface ActionData {
   message?: string;
   error?: string;
 }
-
-// SvelteKit types
-export interface PageServerLoad {
-  ({ fetch }: { fetch: typeof fetch }): Promise<PageData>;
-}
-
-export interface Actions {
-  save: ({ request, fetch }: { request: Request; fetch: typeof fetch }) => Promise<ActionData>;
-}

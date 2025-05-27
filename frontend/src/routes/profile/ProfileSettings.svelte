@@ -1,4 +1,21 @@
 <script lang="ts">
+  import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+  } from "$lib/components/ui/card";
+  import { Input } from "$lib/components/ui/input";
+  import { Label } from "$lib/components/ui/label";
+  import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+  } from "$lib/components/ui/select";
+  import { Switch } from "$lib/components/ui/switch";
+
   interface Props {
     selectedTimezone: string;
     timezones: string[];
@@ -30,140 +47,90 @@
   }: Props = $props();
 </script>
 
-<div>
-  <h3 class="text-md font-medium text-gray-900 mb-4">Profile Settings</h3>
+<Card>
+  <CardHeader>
+    <CardTitle>Profile Settings</CardTitle>
+  </CardHeader>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">
-        Timezone:
-        <select
-          bind:value={selectedTimezone}
-          oninput={onUpdate}
-          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+  <CardContent class="space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="space-y-2">
+        <Label>Timezone:</Label>
+        <Select
+          onValueChange={(value) => {
+            selectedTimezone = value;
+            onUpdate();
+          }}
         >
-          <option value="">Select timezone</option>
-          {#each timezones as tz}
-            <option value={tz}>{tz}</option>
-          {/each}
-        </select>
-      </label>
-    </div>
+          <SelectTrigger>Select timezone</SelectTrigger>
+          <SelectContent>
+            {#each timezones as tz}
+              <SelectItem value={tz}>{tz}</SelectItem>
+            {/each}
+          </SelectContent>
+        </Select>
+      </div>
 
-    <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">
-        Duration of Insulin Activity (DIA) [hours]:
-        <input
+      <div class="space-y-2">
+        <Label>Duration of Insulin Activity (DIA) [hours]:</Label>
+        <Input
           type="number"
           step="0.1"
           bind:value={diaInput}
           oninput={onUpdate}
-          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
         />
-      </label>
-    </div>
-  </div>
-
-  <!-- Carb Settings -->
-  <div class="mt-4">
-    <div class="flex items-center mb-2">
-      <input
-        type="checkbox"
-        bind:checked={perGIValues}
-        onchange={onUpdate}
-        class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-      />
-      <label class="ml-2 block text-sm text-gray-900">
-        Use per-GI carb absorption values
-      </label>
-    </div>
-
-    {#if !perGIValues}
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            Carb absorption rate [g/hr]:
-            <input
-              type="number"
-              bind:value={carbsHrInput}
-              oninput={onUpdate}
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-          </label>
-        </div>
       </div>
-    {:else}
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            High GI carbs [g/hr]:
-            <input
-              type="number"
-              bind:value={carbsHrHigh}
-              oninput={onUpdate}
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-          </label>
+    </div>
+
+    <!-- Carb Settings -->
+    <div class="space-y-4">
+      <div class="flex items-center space-x-2">
+        <Switch bind:checked={perGIValues} onCheckedChange={onUpdate} />
+        <Label>Use per-GI carb absorption values</Label>
+      </div>
+
+      {#if !perGIValues}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="space-y-2">
+            <Label>Carb absorption rate [g/hr]:</Label>
+            <Input type="number" bind:value={carbsHrInput} oninput={onUpdate} />
+          </div>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            Medium GI carbs [g/hr]:
-            <input
+      {:else}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="space-y-2">
+            <Label>High GI carbs [g/hr]:</Label>
+            <Input type="number" bind:value={carbsHrHigh} oninput={onUpdate} />
+          </div>
+          <div class="space-y-2">
+            <Label>Medium GI carbs [g/hr]:</Label>
+            <Input
               type="number"
               bind:value={carbsHrMedium}
               oninput={onUpdate}
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             />
-          </label>
+          </div>
+          <div class="space-y-2">
+            <Label>Low GI carbs [g/hr]:</Label>
+            <Input type="number" bind:value={carbsHrLow} oninput={onUpdate} />
+          </div>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            Low GI carbs [g/hr]:
-            <input
-              type="number"
-              bind:value={carbsHrLow}
-              oninput={onUpdate}
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-          </label>
-        </div>
-      </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            High GI delay [min]:
-            <input
-              type="number"
-              bind:value={delayHigh}
-              oninput={onUpdate}
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-          </label>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="space-y-2">
+            <Label>High GI delay [min]:</Label>
+            <Input type="number" bind:value={delayHigh} oninput={onUpdate} />
+          </div>
+          <div class="space-y-2">
+            <Label>Medium GI delay [min]:</Label>
+            <Input type="number" bind:value={delayMedium} oninput={onUpdate} />
+          </div>
+          <div class="space-y-2">
+            <Label>Low GI delay [min]:</Label>
+            <Input type="number" bind:value={delayLow} oninput={onUpdate} />
+          </div>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            Medium GI delay [min]:
-            <input
-              type="number"
-              bind:value={delayMedium}
-              oninput={onUpdate}
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-          </label>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            Low GI delay [min]:
-            <input
-              type="number"
-              bind:value={delayLow}
-              oninput={onUpdate}
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            />
-          </label>
-        </div>
-      </div>
-    {/if}
-  </div>
-</div>
+      {/if}
+    </div>
+  </CardContent>
+</Card>

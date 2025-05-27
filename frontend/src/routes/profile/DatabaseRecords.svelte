@@ -1,4 +1,16 @@
 <script lang="ts">
+  import { Button } from "$lib/components/ui/button";
+  import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+  } from "$lib/components/ui/card";
+  import { Input } from "$lib/components/ui/input";
+  import { Label } from "$lib/components/ui/label";
+  import * as Select from "$lib/components/ui/select/index.js";
+  import { Plus, Trash2, Copy } from "lucide-svelte";
+
   interface Props {
     currentRecord: number;
     mongoRecords: any[];
@@ -24,70 +36,55 @@
   }: Props = $props();
 </script>
 
-<div class="bg-gray-50 rounded-lg p-6">
-  <div class="flex items-center justify-between mb-4">
-    <h2 class="text-lg font-semibold text-gray-900">Database Records</h2>
-    <div class="flex space-x-2">
-      <button
-        type="button"
-        onclick={onAddRecord}
-        class="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-      >
-        ➕ Add
-      </button>
-      <button
-        type="button"
-        onclick={onRemoveRecord}
-        class="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-      >
-        🗑️ Remove
-      </button>
-      <button
-        type="button"
-        onclick={onCloneRecord}
-        class="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-      >
-        📋 Clone
-      </button>
+<Card>
+  <CardHeader>
+    <div class="flex items-center justify-between">
+      <CardTitle>Database Records</CardTitle>
+      <div class="flex space-x-2">
+        <Button variant="default" size="sm" onclick={onAddRecord}>
+          <Plus class="w-4 h-4" />
+          Add
+        </Button>
+        <Button variant="destructive" size="sm" onclick={onRemoveRecord}>
+          <Trash2 class="w-4 h-4" />
+          Remove
+        </Button>
+        <Button variant="outline" size="sm" onclick={onCloneRecord}>
+          <Copy class="w-4 h-4" />
+          Clone
+        </Button>
+      </div>
     </div>
-  </div>
+  </CardHeader>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">
-        Record valid from:
+  <CardContent>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="space-y-2">
+        <Label>Record valid from:</Label>
         <div class="flex space-x-2">
-          <input
-            type="date"
-            bind:value={dateInput}
-            oninput={onUpdate}
-            class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-          />
-          <input
-            type="time"
-            bind:value={timeInput}
-            oninput={onUpdate}
-            class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-          />
+          <Input type="date" bind:value={dateInput} oninput={onUpdate} />
+          <Input type="time" bind:value={timeInput} oninput={onUpdate} />
         </div>
-      </label>
-    </div>
+      </div>
 
-    <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">
-        Current Record:
-        <select
-          bind:value={currentRecord}
-          onchange={onRecordChange}
-          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+      <div class="space-y-2">
+        <Label>Current Record:</Label>
+        <Select.Root
+          onValueChange={(value) => {
+            currentRecord = parseInt(value);
+            onRecordChange();
+          }}
         >
-          {#each mongoRecords as record, index}
-            <option value={index}>
-              {new Date(record.startDate).toLocaleString()} - {record.defaultProfile}
-            </option>
-          {/each}
-        </select>
-      </label>
+          <Select.Trigger>Select a record</Select.Trigger>
+          <Select.Content>
+            {#each mongoRecords as record, index}
+              <Select.Item value={index.toString()}>
+                {new Date(record.startDate).toLocaleString()} - {record.defaultProfile}
+              </Select.Item>
+            {/each}
+          </Select.Content>
+        </Select.Root>
+      </div>
     </div>
-  </div>
-</div>
+  </CardContent>
+</Card>
