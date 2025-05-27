@@ -26,6 +26,7 @@ export default defineConfig({
         clock: resolve(__dirname, "bundle/clock/index.html"),
         main: resolve(__dirname, "bundle/index.html"),
       },
+      external: ["flot", "flot/jquery.flot.time", "flot/jquery.flot.pie", "flot/jquery.flot.fillbetween"],
     },
     target: "es2015",
     commonjsOptions: {
