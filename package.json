@@ -41,8 +41,8 @@
     "dev-test": "env-cmd -f ./my.devtest.env nodemon --inspect lib/server/server.js 0.0.0.0",
     "prod": "env-cmd -f ./my.prod.env node lib/server/server.js 0.0.0.0",
     "lint": "eslint lib",
-    "build:sveltekit": "cd frontend && npm run build:sveltekit",
-    "dev:sveltekit": "cd frontend && npm run dev:sveltekit"
+    "build:sveltekit": "cd frontend && npm run build",
+    "dev:sveltekit": "cd frontend && npm run dev"
   },
   "main": "lib/server/server.js",
   "nodemonConfig": {
