@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import { sveltekit } from '@sveltejs/kit/vite';
 import commonjs from "vite-plugin-commonjs";
 import inject from "@rollup/plugin-inject";
+import tailwindcss from '@tailwindcss/vite';
 import { resolve } from "path";
 
 const isDevelopment = process.env.NODE_ENV === "development";
@@ -37,7 +38,9 @@ export default defineConfig({
       process.env.NODE_ENV ?? "production",
     ),
   },
-  assetsInclude: ["**/*.jpg", "**/*.png", "**/*.gif"],  plugins: [
+  assetsInclude: ["**/*.jpg", "**/*.png", "**/*.gif"],
+  plugins: [
+    tailwindcss(),
     sveltekit(),
     commonjs(),
     inject({
