@@ -35,4 +35,6 @@ npm-debug.log
 mongo-data/
 letsencrypt/
 
-frontend/dist
+dist/
+build/
+.svelte-kit

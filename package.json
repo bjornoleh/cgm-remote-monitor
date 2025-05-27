@@ -31,7 +31,7 @@
     "test-single": "env-cmd -f ./my.test.env mocha --timeout 5000 --require ./tests/hooks.js --exit ./tests/$TEST.test.js",
     "test-ci": "env-cmd -f ./tests/ci.test.env nyc --reporter=lcov --reporter=text-summary mocha --timeout 5000 --require ./tests/hooks.js --exit ./tests/*.test.js",
     "env": "env",
-    "postinstall": "webpack --mode production --config webpack/webpack.config.js && npm run-script post-generate-keys",
+    "postinstall": "webpack --mode production --config webpack/webpack.config.js && npm run-script post-generate-keys && npm run build:sveltekit",
     "bundle": "webpack --mode production --config webpack/webpack.config.js && npm run-script post-generate-keys",
     "bundle-dev": "webpack --mode development --config webpack/webpack.config.js && npm run-script post-generate-keys",
     "bundle-analyzer": "webpack --mode development --config webpack/webpack.config.js --profile --json > stats.json && webpack-bundle-analyzer stats.json",
@@ -40,7 +40,9 @@
     "dev": "env-cmd -f ./my.env nodemon --inspect lib/server/server.js 0.0.0.0",
     "dev-test": "env-cmd -f ./my.devtest.env nodemon --inspect lib/server/server.js 0.0.0.0",
     "prod": "env-cmd -f ./my.prod.env node lib/server/server.js 0.0.0.0",
-    "lint": "eslint lib"
+    "lint": "eslint lib",
+    "build:sveltekit": "cd frontend && npm run build:sveltekit",
+    "dev:sveltekit": "cd frontend && npm run dev:sveltekit"
   },
   "main": "lib/server/server.js",
   "nodemonConfig": {

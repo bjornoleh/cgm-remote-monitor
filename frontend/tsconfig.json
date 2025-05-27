@@ -31,5 +31,6 @@
     "@types/d3/d3.d.ts",
     "lib/types.d.ts",
     "lib/**/*.js"
-  ]
+  ],
+  "extends": "./.svelte-kit/tsconfig.json"
 }
