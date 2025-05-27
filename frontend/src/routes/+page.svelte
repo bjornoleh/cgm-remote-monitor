@@ -1,7 +1,2 @@
-<h1>SvelteKit Home Page</h1>
-<p>This is the home page of your SvelteKit app integrated with Nightscout!</p>
-
-<div>
-	<h2>Nightscout Integration</h2>
-	<p>You can now create SvelteKit pages that work alongside your existing Nightscout Express server.</p>
-</div>
+<h1>Welcome to SvelteKit</h1>
+<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>

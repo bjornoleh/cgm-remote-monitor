@@ -4,6 +4,7 @@ import commonjs from "vite-plugin-commonjs";
 import inject from "@rollup/plugin-inject";
 import tailwindcss from '@tailwindcss/vite';
 import { resolve } from "path";
+import { paraglide } from "@inlang/paraglide-sveltekit/vite";
 
 const isDevelopment = process.env.NODE_ENV === "development";
 
@@ -42,6 +43,10 @@ export default defineConfig({
   plugins: [
     tailwindcss(),
     sveltekit(),
+    paraglide({
+        project: "./project.inlang",
+        outdir: "./src/lib/paraglide"
+    }),
     commonjs(),
     inject({
       $: "jquery",
@@ -182,4 +187,7 @@ export default defineConfig({
       },
     }
   },
+    test: {
+        include: ['src/**/*.{test,spec}.{js,ts}']
+    }
 });
