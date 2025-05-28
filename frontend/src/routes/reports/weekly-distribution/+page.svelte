@@ -1,23 +1,19 @@
 <script lang="ts">
   import type { PageData } from './$types';
-  import { goto } from '$app/navigation';
-  import { page } from '$app/stores'; 
 
-  import { LayerChart, Rect, Line, XAxis, YAxis, Tooltip } from 'layerchart';
+  import { LayerChart, Rect, Line, XAxis, YAxis, Tooltip } from 'layerchart'; // Grid removed as not used
   import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCaption } from '$lib/components/ui/table';
-  import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '$lib/components/ui/card';
-  import TIRPieChart from '$lib/components/charts/TIRPieChart.svelte';
-  import DateRangePicker from '$lib/components/reports/DateRangePicker.svelte'; // Import date picker
+  import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '$lib/components/ui/card'; // Import Card
+  import TIRPieChart from '$lib/components/charts/TIRPieChart.svelte'; // Import the pie chart
 
   let { data }: PageData = $props();
 
   const reportDetails = $derived(data.weeklyDistributionReport);
-  const distributionDataByDay = $derived(reportDetails?.distributionByDay || []);
+  const distributionDataByDay = $derived(reportDetails?.distributionByDay || []); // Renamed for clarity
   const avgWeeklyTIR = $derived(reportDetails?.averageWeeklyTIR);
   const tirColors = $derived(reportDetails?.tirColors);
-  const currentSelectedWeekStart = $derived(reportDetails?.selectedWeekStartDate); // Date for which report is shown
-
-  const yDomainBoxPlot = $derived([
+  
+  const yDomainBoxPlot = $derived([ // Renamed for clarity
     Math.min(0, ...distributionDataByDay.map(d => +d.min)) - 10,
     Math.max(...distributionDataByDay.map(d => +d.max)) + 10
   ]);
@@ -28,41 +24,17 @@
     { name: 'Target (70-180)', value: avgWeeklyTIR.target, color: tirColors.target },
     { name: 'High (181-250)', value: avgWeeklyTIR.high, color: tirColors.high },
     { name: 'Very High (>250)', value: avgWeeklyTIR.veryHigh, color: tirColors.veryHigh }
-  ].filter(segment => segment.value > 0) : []);
+  ].filter(segment => segment.value > 0) : []); // Filter out 0-value segments
 
-  function handleDateChange(event: CustomEvent<{ startDate: string; endDate: string }>) {
-    const targetDate = event.detail.startDate; // Use startDate from picker to define the week
-    const currentPath = $page.url.pathname;
-    goto(`${currentPath}?targetDate=${targetDate}`, { keepFocus: true, invalidateAll: true });
-  }
-
-  function getWeekRangeLabel(startDateString: string | undefined): string {
-    if (!startDateString) return 'N/A';
-    const start = new Date(startDateString + 'T00:00:00Z'); // Ensure UTC context
-    const end = new Date(start);
-    end.setUTCDate(start.getUTCDate() + 6); // Use UTC date methods
-    return `${start.toLocaleDateString(undefined, {month: 'short', day: 'numeric', timeZone: 'UTC'})} - ${end.toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC'})}`;
-  }
 </script>
 
 <div class="p-4 md:p-6 bg-gray-100 min-h-screen">
-  <header class="mb-6">
-    <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-1">{reportDetails?.reportName || 'Weekly Distribution'}</h1>
-    {#if reportDetails?.generatedDate}
-      <p class="text-xs md:text-sm text-gray-600">
-        Displaying distribution for week: {getWeekRangeLabel(currentSelectedWeekStart)}
-        (Report Generated: {reportDetails.generatedDate})
-      </p>
-    {/if}
-  </header>
-
-  <div class="mb-6 bg-white shadow-md rounded-lg p-4">
-    <h3 class="text-lg font-medium text-gray-700 mb-2">Select Target Week:</h3>
-    <DateRangePicker on:dateChange={handleDateChange} />
-    <p class="text-xs text-gray-500 mt-1">Select any day within your target week using the 'Start Date' picker. 'End Date' is ignored.</p>
-  </div>
-
   {#if reportDetails}
+    <header class="mb-6">
+      <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-1">{reportDetails.reportName}</h1>
+      <p class="text-xs md:text-sm text-gray-600">Generated on: {reportDetails.generatedDate}</p>
+    </header>
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
       <div class="lg:col-span-2 bg-white shadow-lg rounded-lg p-4 md:p-6">
         <h2 class="text-xl font-semibold text-gray-700 mb-4">Glucose Distribution by Day of Week</h2>
@@ -110,21 +82,21 @@
             </LayerChart>
           </div>
         {:else}
-          <p class="text-center text-gray-500 py-10">Box plot data not available for the selected week.</p>
+          <p class="text-center text-gray-500 py-10">Box plot data not available.</p>
         {/if}
       </div>
 
       <div class="lg:col-span-1">
         <Card>
           <CardHeader>
-            <CardTitle>Average TIR for {currentSelectedWeekStart ? getWeekRangeLabel(currentSelectedWeekStart) : 'Selected Week'}</CardTitle>
-            <CardDescription>Overall Time In Range</CardDescription>
+            <CardTitle>Average Weekly TIR</CardTitle>
+            <CardDescription>Overall Time In Range for the week</CardDescription>
           </CardHeader>
-          <CardContent class="p-0 flex justify-center items-center pt-2">
+          <CardContent class="p-0 flex justify-center items-center">
             {#if pieChartData.length > 0}
               <TIRPieChart tirData={pieChartData} />
             {:else}
-              <p class="text-sm text-gray-500 text-center p-4">Average TIR data not available for this week.</p>
+              <p class="text-sm text-gray-500 text-center p-4">Average Weekly TIR data not available.</p>
             {/if}
           </CardContent>
         </Card>
@@ -133,9 +105,9 @@
 
     {#if distributionDataByDay.length > 0}
       <div class="bg-white shadow-lg rounded-lg p-4 md:p-6">
-        <h2 class="text-xl font-semibold text-gray-700 mb-4">Detailed Data for {currentSelectedWeekStart ? getWeekRangeLabel(currentSelectedWeekStart) : 'Selected Week'}</h2>
+        <h2 class="text-xl font-semibold text-gray-700 mb-4">Detailed Weekly Distribution Data</h2>
         <Table>
-          <TableCaption class="text-sm text-gray-500 mt-2">Min, Q1, Median, Q3, and Max glucose values for each day of the selected week.</TableCaption>
+          <TableCaption class="text-sm text-gray-500 mt-2">Min, Q1, Median, Q3, and Max glucose values for each day.</TableCaption>
           <TableHeader>
             <TableRow>
               <TableHead>Day</TableHead>
@@ -161,6 +133,7 @@
         </Table>
       </div>
     {/if}
+
   {:else}
     <p class="text-center text-gray-500 py-10">Loading report details...</p>
   {/if}
