@@ -1,110 +1,104 @@
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params }) => {
-  const fetchData = async () => {
-    await new Promise(resolve => setTimeout(resolve, 50)); // Simulate network delay
+export const load: PageServerLoad = async ({ url }) => { 
+  const fetchData = async (startDateParam?: string, endDateParam?: string, activeTypesParam?: string) => {
+    await new Promise(resolve => setTimeout(resolve, 50));
 
-    // Sample data for treatment events
-    const treatmentEvents = [
-      { id: 'treat-1', timestamp: new Date(2024, 6, 20, 8, 0).toISOString(), eventType: 'Bolus', details: 'Insulin: 5.0 U', notes: 'Breakfast correction' },
-      { id: 'treat-2', timestamp: new Date(2024, 6, 20, 8, 5).toISOString(), eventType: 'Carbs', details: 'Carbs: 45g', notes: 'Breakfast' },
-      { id: 'treat-3', timestamp: new Date(2024, 6, 20, 10, 30).toISOString(), eventType: 'Exercise', details: 'Duration: 30min', notes: 'Light walk' },
-      { id: 'treat-4', timestamp: new Date(2024, 6, 20, 12, 15).toISOString(), eventType: 'Bolus', details: 'Insulin: 3.0 U', notes: 'Lunch pre-bolus' },
-      { id: 'treat-5', timestamp: new Date(2024, 6, 20, 12, 25).toISOString(), eventType: 'Carbs', details: 'Carbs: 60g', notes: 'Lunch' },
-      { id: 'treat-6', timestamp: new Date(2024, 6, 20, 16, 0).toISOString(), eventType: 'Correction Bolus', details: 'Insulin: 1.5 U', notes: 'Afternoon high' },
-      { id: 'treat-7', timestamp: new Date(2024, 6, 20, 18, 30).toISOString(), eventType: 'Temp Basal', details: 'Rate: 150%, Duration: 2hr', notes: 'Pre-dinner activity' },
-    ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()); // Sort by most recent first
+    let currentStartDate: Date;
+    let currentEndDate: Date;
 
-    // Simulate IOB (Insulin On Board) data points based on boluses for a chart
-    // This is highly simplified. Real IOB calculation is complex.
-    let iobPoints = [];
-    let currentIOB = 0;
-    const iobDecayRate = 0.25; // Units per hour (example: 4-hour linear decay for a unit)
-    const timeStepMinutes = 30;
-    
-    // Create a timeline of all relevant events (boluses and a final decay point)
-    const eventTimes = new Set<number>();
-    treatmentEvents.filter(t => t.eventType.includes('Bolus')).forEach(bolus => {
-        eventTimes.add(new Date(bolus.timestamp).getTime());
-    });
-    // Add points for a few hours after the last bolus to show decay
-    if (treatmentEvents.length > 0) {
-        const lastEventTime = new Date(treatmentEvents[0].timestamp).getTime(); // sorted recent first
-        const lastBolus = treatmentEvents.find(t => t.eventType.includes('Bolus'));
-        if (lastBolus) {
-             const lastBolusTime = new Date(lastBolus.timestamp).getTime();
-             for (let i = 1; i <= 8; i++) { // up to 4 hours later
-                eventTimes.add(lastBolusTime + i * timeStepMinutes * 60000);
-             }
-        } else { // No boluses, add some points around first event to show 0 IOB
-            const firstEventTime = new Date(treatmentEvents[treatmentEvents.length-1].timestamp).getTime();
-             for (let i = -2; i <= 2; i++) { 
-                eventTimes.add(firstEventTime + i * timeStepMinutes * 60000);
-             }
-        }
+    if (startDateParam && endDateParam) {
+      currentStartDate = new Date(startDateParam + 'T00:00:00Z'); 
+      currentEndDate = new Date(endDateParam + 'T23:59:59Z');   
+    } else {
+      currentEndDate = new Date(); 
+      currentStartDate = new Date();
+      currentStartDate.setUTCDate(currentEndDate.getUTCDate() - 6); 
+      currentStartDate.setUTCHours(0,0,0,0);
+      currentEndDate.setUTCHours(23,59,59,999);
     }
 
+    const allPossibleTreatmentEvents = [ 
+      { id: 'treat-0', timestamp: new Date(Date.UTC(2024, 5, 17, 10, 0)).toISOString(), eventType: 'Carbs', details: 'Carbs: 20g', notes: 'Old Snack' }, // Month is 0-indexed, so 5 is June
+      { id: 'treat-1', timestamp: new Date(Date.UTC(2024, 5, 18, 8, 0)).toISOString(), eventType: 'Bolus', details: 'Insulin: 5.0 U', notes: 'Breakfast correction' },
+      { id: 'treat-2', timestamp: new Date(Date.UTC(2024, 5, 18, 8, 5)).toISOString(), eventType: 'Carbs', details: 'Carbs: 45g', notes: 'Breakfast' },
+      { id: 'treat-3', timestamp: new Date(Date.UTC(2024, 5, 19, 10, 30)).toISOString(), eventType: 'Exercise', details: 'Duration: 30min', notes: 'Light walk' },
+      { id: 'treat-4', timestamp: new Date(Date.UTC(2024, 5, 20, 12, 15)).toISOString(), eventType: 'Bolus', details: 'Insulin: 3.0 U', notes: 'Lunch pre-bolus' },
+      { id: 'treat-5', timestamp: new Date(Date.UTC(2024, 5, 20, 12, 25)).toISOString(), eventType: 'Carbs', details: 'Carbs: 60g', notes: 'Lunch' },
+      { id: 'treat-6', timestamp: new Date(Date.UTC(2024, 5, 21, 16, 0)).toISOString(), eventType: 'Correction Bolus', details: 'Insulin: 1.5 U', notes: 'Afternoon high' },
+      { id: 'treat-7', timestamp: new Date(Date.UTC(2024, 5, 22, 18, 30)).toISOString(), eventType: 'Temp Basal', details: 'Rate: 150%, Duration: 2hr', notes: 'Pre-dinner activity' },
+      { id: 'treat-8', timestamp: new Date(Date.UTC(2024, 5, 23, 9, 0)).toISOString(), eventType: 'Bolus', details: 'Insulin: 4.0 U', notes: 'Breakfast' },
+      { id: 'treat-9', timestamp: new Date(Date.UTC(2024, 5, 24, 14, 0)).toISOString(), eventType: 'Carbs', details: 'Carbs: 30g', notes: 'Snack' },
+      // More data spanning wider range
+      { id: 'treat-10', timestamp: new Date(new Date().getTime() - 1 * 24 * 60 * 60 * 1000).toISOString(), eventType: 'Bolus', details: 'Insulin: 2.0 U', notes: 'Yesterday correction' },
+      { id: 'treat-11', timestamp: new Date(new Date().getTime() - 2 * 24 * 60 * 60 * 1000).toISOString(), eventType: 'Carbs', details: 'Carbs: 50g', notes: 'Day before yesterday lunch' },
+      { id: 'treat-12', timestamp: new Date(new Date().getTime() - 8 * 24 * 60 * 60 * 1000).toISOString(), eventType: 'Bolus', details: 'Insulin: 6.0 U', notes: '8 days ago bolus' },
+      { id: 'treat-13', timestamp: new Date(new Date().getTime() - 10 * 24 * 60 * 60 * 1000).toISOString(), eventType: 'Exercise', details: 'Duration: 60min', notes: '10 days ago run' },
 
-    const sortedTimes = Array.from(eventTimes).sort((a,b) => a - b);
-    
-    let activeInsulin = []; // { amount: number, decayStartTime: number }
+    ];
 
-    for (const timeMs of sortedTimes) {
+    const activeEventTypes = activeTypesParam ? activeTypesParam.split(',') : [];
+
+    let filteredTreatmentEvents = allPossibleTreatmentEvents.filter(event => {
+      const eventDate = new Date(event.timestamp); // event.timestamp is already ISO UTC string
+      const dateMatch = eventDate >= currentStartDate && eventDate <= currentEndDate;
+      if (!dateMatch) return false;
+      if (activeEventTypes.length > 0 && !activeEventTypes.includes(event.eventType)) {
+        return false;
+      }
+      return true;
+    }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()); // Most recent first for table
+
+    let iobPoints: { x: Date, y: number }[] = [];
+    const relevantBoluses = filteredTreatmentEvents // Use already filtered events
+      .filter(t => t.eventType.includes('Bolus'))
+      .sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()); // Chronological for IOB calc
+
+    if (relevantBoluses.length > 0) {
+      let activeInsulin: { amount: number, decayStartTime: number, eventId: string }[] = []; // Added eventId for uniqueness
+      const timeStepMinutes = 30;
+      const insulinDurationHours = 4; 
+      
+      const iobChartStartTime = currentStartDate.getTime();
+      const iobChartEndTime = new Date(currentEndDate.getTime() + insulinDurationHours * 3600000).getTime(); // Extend to show full decay
+
+      for (let timeMs = iobChartStartTime; timeMs <= iobChartEndTime; timeMs += timeStepMinutes * 60000) {
         const currentTime = new Date(timeMs);
+        let currentTickIOB = 0;
         
-        // Decay existing active insulin
-        currentIOB = 0;
+        // Add new boluses that occurred UP TO this point in time if not already added
+        relevantBoluses.forEach(event => {
+            const eventTime = new Date(event.timestamp).getTime();
+            if (eventTime <= currentTime.getTime() && !activeInsulin.some(ins => ins.eventId === event.id)) {
+                 const amount = parseFloat(event.details.match(/Insulin: ([\d.]+)/)?.[1] || '0');
+                 if (amount > 0) {
+                    activeInsulin.push({ amount, decayStartTime: eventTime, eventId: event.id });
+                 }
+            }
+        });
+        
+        // Decay existing active insulin portions and sum up IOB
         activeInsulin = activeInsulin.filter(ins => {
             const hoursElapsed = (currentTime.getTime() - ins.decayStartTime) / (1000 * 60 * 60);
-            const remaining = ins.amount - (hoursElapsed * iobDecayRate * (ins.amount / (ins.amount || 1))); // Decay proportional to initial amount
-            // This decay logic is still very basic. A true model uses duration curves.
-            // Simplified: assume insulin decays over ~4 hours (so decayRate of 0.25/hr means 1U gone in 4hr)
-            const initialAmount = ins.amount; // if 1U lasts 4 hours, decay rate is 0.25 U/hr
-            const insulinDurationHours = 4; // Standard assumption
-            const decayPerStep = initialAmount / (insulinDurationHours / (timeStepMinutes/60)); // how much decays per step if spread over duration
-
-            // More common: linear decay based on fixed duration
-            const effectiveAmountRemaining = initialAmount * (1 - (hoursElapsed / insulinDurationHours));
-
-            if (effectiveAmountRemaining > 0.01) { // Keep if more than minimal amount
-                 currentIOB += effectiveAmountRemaining;
-                 return true;
+            const effectiveAmountRemaining = ins.amount * Math.max(0, (1 - (hoursElapsed / insulinDurationHours)));
+            if (effectiveAmountRemaining > 0.01) {
+                currentTickIOB += effectiveAmountRemaining;
+                return true; // Keep this insulin portion
             }
-            return false;
+            return false; // Insulin portion has decayed
         });
-
-        // Add new boluses at this time
-        treatmentEvents.forEach(event => {
-            if (new Date(event.timestamp).getTime() === currentTime.getTime() && event.eventType.includes('Bolus')) {
-                const amount = parseFloat(event.details.match(/Insulin: ([\d.]+)/)?.[1] || '0');
-                if (amount > 0) {
-                    activeInsulin.push({ amount, decayStartTime: currentTime.getTime() });
-                    currentIOB += amount;
-                }
-            }
-        });
-        iobPoints.push({ x: currentTime, y: parseFloat(currentIOB.toFixed(2)) });
+        
+        // Add IOB point only if it's within the display window (currentStartDate to currentEndDate + duration)
+        // The loop condition already ensures this, but points are for display on chart
+        iobPoints.push({ x: currentTime, y: parseFloat(currentTickIOB.toFixed(2)) });
+      }
     }
-    // Ensure IOB eventually goes to 0 if no more boluses
-     if (iobPoints.length > 0) {
-        let lastPoint = iobPoints[iobPoints.length - 1];
-        let safetyCounter = 0;
-        while(lastPoint.y > 0 && safetyCounter < 24) { // Max 12 more hours of decay
-            const nextTime = new Date(lastPoint.x.getTime() + timeStepMinutes * 60000);
-            let decayingIOB = 0;
-            activeInsulin = activeInsulin.filter(ins => {
-                 const hoursElapsed = (nextTime.getTime() - ins.decayStartTime) / (1000 * 60 * 60);
-                 const insulinDurationHours = 4;
-                 const effectiveAmountRemaining = ins.amount * (1 - (hoursElapsed / insulinDurationHours));
-                 if (effectiveAmountRemaining > 0.01) {
-                     decayingIOB += effectiveAmountRemaining;
-                     return true;
-                 }
-                 return false;
-            });
-            lastPoint = {x: nextTime, y: parseFloat(decayingIOB.toFixed(2))};
-            iobPoints.push(lastPoint);
-            safetyCounter++;
+    
+    // If no IOB points (e.g. no boluses in range), add points to show zero line for the selected range
+    if (iobPoints.length === 0) {
+        iobPoints.push({x: new Date(currentStartDate), y: 0}); // Start point for the zero line
+        if (currentStartDate.getTime() !== currentEndDate.getTime()) { // Avoid duplicate if range is single instant
+             iobPoints.push({x: new Date(currentEndDate), y: 0}); // End point for the zero line
         }
     }
 
@@ -112,14 +106,21 @@ export const load: PageServerLoad = async ({ params }) => {
     return {
       reportName: "Treatments Log",
       generatedDate: new Date().toLocaleDateString(),
-      treatments: treatmentEvents,
-      iobData: iobPoints.filter((p,i,arr) => i === 0 || p.y !== arr[i-1].y || p.x.getTime() !== arr[i-1].x.getTime() || (p.y === 0 && arr[i-1].y !==0) ) // Filter out redundant points for cleaner chart
-                       .sort((a,b) => a.x.getTime() - b.x.getTime())
+      dataStartDate: currentStartDate.toISOString().split('T')[0],
+      dataEndDate: currentEndDate.toISOString().split('T')[0],
+      activeEventTypes: activeEventTypes,
+      treatments: filteredTreatmentEvents,
+      iobData: iobPoints 
     };
   };
 
-  const data = await fetchData();
+  const startDate = url.searchParams.get('startDate');
+  const endDate = url.searchParams.get('endDate');
+  const types = url.searchParams.get('types');
+
+  const reportData = await fetchData(startDate || undefined, endDate || undefined, types || undefined);
+  
   return {
-    treatmentsReport: data
+    treatmentsReport: reportData
   };
 };

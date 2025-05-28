@@ -7,7 +7,7 @@
     "skipLibCheck": true,
     "checkJs": true,
     "noImplicitAny": true,
-    "types": ["svelte"],
+
     // "typeRoots": ["./@types"],
 
     /* Bundler mode */
@@ -16,7 +16,7 @@
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
-    "forceConsistentCasingInFileNames": true,
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,
@@ -30,10 +30,7 @@
     "@types/js-storage/js-storage.d.ts",
     "@types/d3/d3.d.ts",
     "lib/types.d.ts",
-    "lib/**/*.js",
-    "src/**/*.js",
-    "src/**/*.ts",
-    "src/**/*.svelte"
+    "lib/**/*.js"
   ],
   "extends": "./.svelte-kit/tsconfig.json"
 }
