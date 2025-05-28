@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { PageData } from "./$types";
 
-  import { LayerChart, Bar, XAxis, YAxis, Tooltip } from "layerchart";
+  import { LineChart, Bar, Axis } from "layerchart";
   import {
     Table,
     TableBody,
@@ -155,32 +155,14 @@
           Distribution of Glucose Readings (%)
         </h2>
         <div class="h-72 md:h-96">
-          <LayerChart
+          <LineChart
             data={histogramChartData}
             x="x"
             y="y"
             xDomain={null}
             yDomain={null}
             yPadding={0.1}
-          >
-            <XAxis dataKey="x" label="Glucose Range (mg/dL)" grid={false} />
-            <YAxis
-              dataKey="y"
-              label="Percentage of Readings (%)"
-              grid={true}
-              ticks={5}
-            />
-            <Bar class="fill-purple-600" />
-            <Tooltip let:data>
-              <div
-                class="p-2 bg-white border-gray-200 shadow-lg rounded-md text-sm"
-              >
-                <p class="font-semibold">Range: {data[0].x}</p>
-                <p>Percent: {data[0].y}%</p>
-                <p>Count: {data[0].count}</p>
-              </div>
-            </Tooltip>
-          </LayerChart>
+          ></LineChart>
         </div>
       </div>
     {/if}

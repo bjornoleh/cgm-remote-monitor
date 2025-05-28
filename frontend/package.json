@@ -22,10 +22,15 @@
 	},
 	"author": "",
 	"license": "ISC",
-	"description": "",
-	"scripts": {
+	"description": "",	"scripts": {
 		"dev": "vite dev",
+		"dev:prod": "vite dev --mode production",
+		"dev:test": "vite dev --mode test",
 		"build": "vite build",
+		"build:sveltekit": "vite build",
+		"dev:sveltekit": "vite dev",
+		"dev:sveltekit:prod": "vite dev --mode production",
+		"dev:sveltekit:test": "vite dev --mode test",
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",

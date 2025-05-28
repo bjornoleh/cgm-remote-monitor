@@ -1,93 +1,244 @@
 import type { PageServerLoad } from './$types';
+import { apiGet } from '$lib/api';
+import type { SGVEntry, TimeInRanges, DistributionDataPoint } from '$lib/types/nightscout';
 
-export const load: PageServerLoad = async ({ params }) => {
+/**
+ * Calculate glucose distribution from readings
+ */
+function calculateDistribution(readings: SGVEntry[]): DistributionDataPoint[] {
+  if (readings.length === 0) {
+    return [];
+  }
+
+  // Define distribution bins (mg/dL)
+  const bins = [
+    { range: '<40', min: 0, max: 39 },
+    { range: '40-50', min: 40, max: 50 },
+    { range: '50-60', min: 51, max: 60 },
+    { range: '60-70', min: 61, max: 70 },
+    { range: '70-80', min: 71, max: 80 },
+    { range: '80-90', min: 81, max: 90 },
+    { range: '90-100', min: 91, max: 100 },
+    { range: '100-110', min: 101, max: 110 },
+    { range: '110-120', min: 111, max: 120 },
+    { range: '120-130', min: 121, max: 130 },
+    { range: '130-140', min: 131, max: 140 },
+    { range: '140-150', min: 141, max: 150 },
+    { range: '150-180', min: 151, max: 180 },
+    { range: '180-250', min: 181, max: 250 },
+    { range: '250-300', min: 251, max: 300 },
+    { range: '>300', min: 301, max: 9999 }
+  ];
+
+  // Count readings in each bin
+  const counts = bins.map(bin => ({
+    range: bin.range,
+    count: readings.filter(reading => reading.sgv >= bin.min && reading.sgv <= bin.max).length,
+    percent: 0
+  }));
+
+  // Calculate percentages
+  const total = readings.length;
+  counts.forEach(bin => {
+    bin.percent = total > 0 ? Math.round((bin.count / total) * 100 * 10) / 10 : 0;
+  });
+
+  // Filter out empty bins
+  return counts.filter(bin => bin.count > 0);
+}
+
+/**
+ * Calculate time in ranges from glucose readings
+ */
+function calculateTimeInRanges(readings: SGVEntry[]): TimeInRanges {
+  if (readings.length === 0) {
+    return { veryLow: 0, low: 0, target: 0, high: 0, veryHigh: 0 };
+  }
+
+  const counts = {
+    veryLow: 0,   // <54 mg/dL
+    low: 0,       // 54-69 mg/dL
+    target: 0,    // 70-180 mg/dL
+    high: 0,      // 181-250 mg/dL
+    veryHigh: 0   // >250 mg/dL
+  };
+
+  readings.forEach(reading => {
+    const glucose = reading.sgv;
+    if (glucose < 54) counts.veryLow++;
+    else if (glucose <= 69) counts.low++;
+    else if (glucose <= 180) counts.target++;
+    else if (glucose <= 250) counts.high++;
+    else counts.veryHigh++;
+  });
+
+  const total = readings.length;
+  return {
+    veryLow: Math.round((counts.veryLow / total) * 100),
+    low: Math.round((counts.low / total) * 100),
+    target: Math.round((counts.target / total) * 100),
+    high: Math.round((counts.high / total) * 100),
+    veryHigh: Math.round((counts.veryHigh / total) * 100)
+  };
+}
+
+export const load: PageServerLoad = async ({ fetch, url }) => {
   const fetchData = async () => {
-    await new Promise(resolve => setTimeout(resolve, 50)); 
+    try {
+      // Get date range from URL parameters, default to last 7 days
+      const daysParam = url.searchParams.get('days');
+      const days = daysParam ? parseInt(daysParam) : 7;
 
-    const distributionDataPoints = [
-      // ... (existing data points)
-      { range: '50-60', count: 5, percent: 2.5 },
-      { range: '60-70', count: 15, percent: 7.5 },
-      { range: '70-80', count: 25, percent: 12.5 },
-      { range: '80-90', count: 40, percent: 20 },
-      { range: '90-100', count: 35, percent: 17.5 },
-      { range: '100-110', count: 30, percent: 15 },
-      { range: '110-120', count: 20, percent: 10 },
-      { range: '120-130', count: 10, percent: 5 },
-      { range: '130-140', count: 8, percent: 4 },
-      { range: '140-150', count: 5, percent: 2.5 },
-      { range: '>150', count: 7, percent: 3.5 },
-    ];
+      // Calculate date range
+      const endDate = new Date();
+      endDate.setHours(23, 59, 59, 999);
+      const startDate = new Date(endDate);
+      startDate.setDate(startDate.getDate() - days);
+      startDate.setHours(0, 0, 0, 0);
 
-    // Current summaryMetrics are fine, we'll map them in the Svelte component
-    const summaryMetrics = {
-      totalReadings: 200,
-      percentVeryLow: 2.5, // Assuming 'Below' can be split further if needed, or grouped
-      percentLow: 7.5,
-      percentTarget: 62.5, // Example: 12.5+20+17.5+15 for 70-110 if that's target
-      percentHigh: 16.5,   // Example: 10+5+4 for 110-140
-      percentVeryHigh: 11, // Example: 2.5 + 3.5 for 140+
-    };
-    // Let's refine summaryMetrics to directly map to standard TIR categories for pie chart
-    // These are example calculations based on the distributionDataPoints ranges
-    // Very Low: <54 (no direct bin, assume 0 or combine from lowest if applicable)
-    // Low: 54-69 (approximated by '50-60' and '60-70' bins)
-    // Target: 70-180 (approximated by relevant bins)
-    // High: 181-250 (approximated by relevant bins)
-    // Very High: >250 (approximated by relevant bins)
+      // Validate parameters
+      if (days < 1 || days > 90) {
+        throw new Error('Days parameter must be between 1 and 90');
+      }
 
-    // For simplicity, we'll use slightly more direct TIR values for the pie chart
-    // This would ideally be calculated from raw data in a real scenario
-    const tirSpecificSummary = {
-        veryLow: 5,
-        low: 10,
-        target: 70,
-        high: 10,
-        veryHigh: 5
-    };
-    // Normalize to 100%
-    let totalTIR = Object.values(tirSpecificSummary).reduce((sum, val) => sum + val, 0);
-    if (totalTIR > 0) {
-        const sf = 100 / totalTIR;
-        let runningTotal = 0;
-        const keys = Object.keys(tirSpecificSummary);
-        for (let i = 0; i < keys.length - 1; i++) {
-            const key = keys[i];
-            tirSpecificSummary[key] = Math.round(tirSpecificSummary[key] * sf);
-            runningTotal += tirSpecificSummary[key];
+      // Fetch SGV data for the date range
+      const response = await apiGet<SGVEntry[]>(fetch, '/api/v1/entries.json', {
+        params: {
+          'find[type]': 'sgv',
+          'find[date][$gte]': startDate.getTime().toString(),
+          'find[date][$lte]': endDate.getTime().toString(),
+          count: '10000' // Fetch more data for longer periods
         }
-        // Assign the remainder to the last category (target) to ensure sum is 100
-        tirSpecificSummary[keys[keys.length-1]] = 100 - runningTotal;
+      });
 
-        // Check sum again due to potential rounding of all but last, if target was not last, this could be an issue.
-        // The provided code snippet implies target is adjusted, let's assume target is one of the keys,
-        // and if it was the last one, it's fine. If not, this logic may not be perfect.
-        // For this task, we'll stick to the provided normalization logic.
-        let currentSum = Object.values(tirSpecificSummary).reduce((s,v)=>s+v,0);
-        if (currentSum !== 100 && tirSpecificSummary.target) { // If target is not the last element, this logic is flawed.
-             // The most robust way is to assign the remainder to the largest category, usually target.
-             const diff = 100 - currentSum;
-             tirSpecificSummary.target += diff; // Add difference to target
-        }
+      if (!response.success) {
+        console.error('Failed to fetch SGV data:', response.error);
+        return {
+          reportName: "Glucose Distribution Report",
+          generatedDate: new Date().toLocaleDateString(),
+          distributionData: [],
+          summaryMetrics: {
+            totalReadings: 0,
+            percentVeryLow: 0,
+            percentLow: 0,
+            percentTarget: 0,
+            percentHigh: 0,
+            percentVeryHigh: 0,
+          },
+          tirForPieChart: {
+            veryLow: 0,
+            low: 0,
+            target: 0,
+            high: 0,
+            veryHigh: 0
+          },
+          tirColors: {
+            veryLow: 'var(--very-low-bg)',
+            low: 'var(--low-bg)',
+            target: 'var(--target-bg)',
+            high: 'var(--high-bg)',
+            veryHigh: 'var(--very-high-bg)',
+          },
+          error: "Failed to fetch glucose data from the backend",
+          dateRange: {
+            start: startDate.toLocaleDateString(),
+            end: endDate.toLocaleDateString(),
+            days
+          }
+        };
+      }
+
+      const readings = response.data || [];
+
+      // Debug: Log sample data structure
+      if (readings.length > 0) {
+        console.log('Sample SGV entry:', readings[0]);
+        console.log('Total readings for distribution:', readings.length);
+        console.log('Date range:', startDate.toLocaleDateString(), 'to', endDate.toLocaleDateString());
+      }
+
+      // Calculate distribution and metrics
+      const distributionData = calculateDistribution(readings);
+      const timeInRanges = calculateTimeInRanges(readings);
+
+      // Calculate summary metrics from actual data
+      const summaryMetrics = {
+        totalReadings: readings.length,
+        percentVeryLow: timeInRanges.veryLow,
+        percentLow: timeInRanges.low,
+        percentTarget: timeInRanges.target,
+        percentHigh: timeInRanges.high,
+        percentVeryHigh: timeInRanges.veryHigh,
+      };
+
+      // Use actual time in ranges data for pie chart
+      const tirForPieChart = {
+        veryLow: timeInRanges.veryLow,
+        low: timeInRanges.low,
+        target: timeInRanges.target,
+        high: timeInRanges.high,
+        veryHigh: timeInRanges.veryHigh
+      };
+
+      return {
+        reportName: "Glucose Distribution Report",
+        generatedDate: new Date().toLocaleDateString(),
+        dateRange: {
+          start: startDate.toLocaleDateString(),
+          end: endDate.toLocaleDateString(),
+          days
+        },
+        distributionData,
+        summaryMetrics,
+        tirForPieChart,
+        tirColors: {
+          veryLow: 'var(--very-low-bg)',
+          low: 'var(--low-bg)',
+          target: 'var(--target-bg)',
+          high: 'var(--high-bg)',
+          veryHigh: 'var(--very-high-bg)',
+        },
+        totalReadings: readings.length
+      };
+
+    } catch (error) {
+      console.error('Error fetching distribution data:', error);
+
+      return {
+        reportName: "Glucose Distribution Report",
+        generatedDate: new Date().toLocaleDateString(),
+        dateRange: {
+          start: new Date().toLocaleDateString(),
+          end: new Date().toLocaleDateString(),
+          days: 7
+        },
+        distributionData: [],
+        summaryMetrics: {
+          totalReadings: 0,
+          percentVeryLow: 0,
+          percentLow: 0,
+          percentTarget: 0,
+          percentHigh: 0,
+          percentVeryHigh: 0,
+        },
+        tirForPieChart: {
+          veryLow: 0,
+          low: 0,
+          target: 0,
+          high: 0,
+          veryHigh: 0
+        },
+        tirColors: {
+          veryLow: 'var(--very-low-bg)',
+          low: 'var(--low-bg)',
+          target: 'var(--target-bg)',
+          high: 'var(--high-bg)',
+          veryHigh: 'var(--very-high-bg)',
+        },
+        error: error instanceof Error ? error.message : "Unknown error occurred",
+        totalReadings: 0
+      };
     }
-
-
-    const tirColors = {
-      veryLow: 'bg-red-700',
-      low: 'bg-red-500',
-      target: 'bg-green-500',
-      high: 'bg-yellow-400',
-      veryHigh: 'bg-yellow-600',
-    };
-
-    return {
-      reportName: "Glucose Distribution Report",
-      generatedDate: new Date().toLocaleDateString(),
-      distributionData: distributionDataPoints,
-      summaryMetrics: summaryMetrics, // Keep original summary for cards
-      tirForPieChart: tirSpecificSummary, // Add specific data for pie chart
-      tirColors: tirColors
-    };
   };
 
   const data = await fetchData();
