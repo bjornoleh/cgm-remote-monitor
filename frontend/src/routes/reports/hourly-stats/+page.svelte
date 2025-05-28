@@ -1,90 +1,155 @@
 <script lang="ts">
-  import type { PageData } from './$types';
+  import type { PageData } from "./$types";
 
-  import { LayerChart, Bar, XAxis, YAxis, Tooltip } from 'layerchart'; // Grid removed as not used in this version
-  import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCaption } from '$lib/components/ui/table';
-  import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '$lib/components/ui/card';
-  import TIRPieChart from '$lib/components/charts/TIRPieChart.svelte'; // Import the pie chart
+  import { LayerChart, Bar, XAxis, YAxis, Tooltip } from "layerchart";
+  import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+    TableCaption,
+  } from "$lib/components/ui/table";
+  import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    CardDescription,
+  } from "$lib/components/ui/card";
+  import TIRPieChart from "$lib/components/charts/TIRPieChart.svelte";
 
   let { data }: PageData = $props();
 
   const reportDetails = $derived(data.hourlyStatsReport);
   const hourlyStatsData = $derived(reportDetails?.hourlyStats || []);
-  const avgDailyTIRData = $derived(reportDetails?.averageDailyTIR); // New data for pie chart
+  const avgDailyTIRData = $derived(reportDetails?.averageDailyTIR);
   const tirColors = $derived(reportDetails?.tirColors);
 
-  const hourlyAvgGlucoseChartData = $derived( // Renamed for clarity
-    hourlyStatsData.map(stat => ({
+  const hourlyAvgGlucoseChartData = $derived(
+    hourlyStatsData.map((stat) => ({
       x: stat.hourLabel,
       y: stat.averageGlucose,
       median: stat.medianGlucose,
-      stdDev: stat.stdDev
+      stdDev: stat.stdDev,
     }))
   );
 
-  const pieChartTIRData = $derived(avgDailyTIRData && tirColors ? [
-    { name: 'Very Low (<54)', value: avgDailyTIRData.veryLow, color: tirColors.veryLow },
-    { name: 'Low (54-69)', value: avgDailyTIRData.low, color: tirColors.low },
-    { name: 'Target (70-180)', value: avgDailyTIRData.target, color: tirColors.target },
-    { name: 'High (181-250)', value: avgDailyTIRData.high, color: tirColors.high },
-    { name: 'Very High (>250)', value: avgDailyTIRData.veryHigh, color: tirColors.veryHigh }
-  ].filter(segment => segment.value > 0) : []); // Filter out segments with 0 value
-
+  const pieChartTIRData = $derived(
+    avgDailyTIRData && tirColors
+      ? [
+          {
+            name: "Very Low (<54)",
+            value: avgDailyTIRData.veryLow,
+            color: tirColors.veryLow,
+          },
+          {
+            name: "Low (54-69)",
+            value: avgDailyTIRData.low,
+            color: tirColors.low,
+          },
+          {
+            name: "Target (70-180)",
+            value: avgDailyTIRData.target,
+            color: tirColors.target,
+          },
+          {
+            name: "High (181-250)",
+            value: avgDailyTIRData.high,
+            color: tirColors.high,
+          },
+          {
+            name: "Very High (>250)",
+            value: avgDailyTIRData.veryHigh,
+            color: tirColors.veryHigh,
+          },
+        ].filter((segment) => segment.value > 0)
+      : []
+  );
 </script>
 
 <div class="p-4 md:p-6 bg-gray-100 min-h-screen">
   {#if reportDetails}
     <header class="mb-6">
-      <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-1">{reportDetails.reportName}</h1>
-      <p class="text-xs md:text-sm text-gray-600">Generated on: {reportDetails.generatedDate}</p>
+      <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-1">
+        {reportDetails.reportName}
+      </h1>
+      <p class="text-xs md:text-sm text-gray-600">
+        Generated on: {reportDetails.generatedDate}
+      </p>
     </header>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <div class="lg:col-span-2 bg-white shadow-lg rounded-lg p-4 md:p-6">
-            <h2 class="text-xl font-semibold text-gray-700 mb-4">Average Glucose by Hour</h2>
-            {#if hourlyAvgGlucoseChartData.length > 0}
-            <div class="h-72 md:h-96">
-              <LayerChart data={hourlyAvgGlucoseChartData} x="x" y="y" xDomain={null} yDomain={null} yPadding={0.1}>
-                <XAxis dataKey="x" label="Hour of Day" grid={false} />
-                <YAxis dataKey="y" label="Average Glucose (mg/dL)" grid={true} ticks={5}/>
-                <Bar class="fill-sky-600" />
-                <Tooltip let:data>
-                  <div class="p-2 bg-white border-gray-200 shadow-lg rounded-md text-sm">
-                    <p class="font-semibold">Hour: {data[0].x}</p>
-                    <p>Avg. Glucose: {data[0].y} mg/dL</p>
-                    <p>Median: {data[0].median} mg/dL</p>
-                    <p>Std Dev: {data[0].stdDev} mg/dL</p>
-                  </div>
-                </Tooltip>
-              </LayerChart>
-            </div>
-            {:else}
-             <p class="text-center text-gray-500 py-10">Hourly average glucose data not available.</p>
-            {/if}
-        </div>
+      <div class="lg:col-span-2 bg-white shadow-lg rounded-lg p-4 md:p-6">
+        <h2 class="text-xl font-semibold text-gray-700 mb-4">
+          Average Glucose by Hour
+        </h2>
+        {#if hourlyAvgGlucoseChartData.length > 0}
+          <div class="h-72 md:h-96">
+            <LayerChart
+              data={hourlyAvgGlucoseChartData}
+              x="x"
+              y="y"
+              xDomain={null}
+              yDomain={null}
+              yPadding={0.1}
+            >
+              <XAxis dataKey="x" label="Hour of Day" grid={false} />
+              <YAxis
+                dataKey="y"
+                label="Average Glucose (mg/dL)"
+                grid={true}
+                ticks={5}
+              />
+              <Bar />
+              <Tooltip let:data>
+                <div
+                  class="p-2 bg-white border-gray-200 shadow-lg rounded-md text-sm"
+                >
+                  <p class="font-semibold">Hour: {data[0].x}</p>
+                  <p>Avg. Glucose: {data[0].y} mg/dL</p>
+                  <p>Median: {data[0].median} mg/dL</p>
+                  <p>Std Dev: {data[0].stdDev} mg/dL</p>
+                </div>
+              </Tooltip>
+            </LayerChart>
+          </div>
+        {:else}
+          <p class="text-center text-gray-500 py-10">
+            Hourly average glucose data not available.
+          </p>
+        {/if}
+      </div>
 
-        <div class="lg:col-span-1">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Average Daily TIR</CardTitle>
-                    <CardDescription>Overall Time In Range for the day</CardDescription>
-                </CardHeader>
-                <CardContent class="p-0 flex justify-center items-center">
-                    {#if pieChartTIRData.length > 0}
-                        <TIRPieChart tirData={pieChartTIRData} />
-                    {:else}
-                        <p class="text-sm text-gray-500 text-center p-4">Average TIR data not available.</p>
-                    {/if}
-                </CardContent>
-            </Card>
-        </div>
+      <div class="lg:col-span-1">
+        <Card>
+          <CardHeader>
+            <CardTitle>Average Daily TIR</CardTitle>
+            <CardDescription>Overall Time In Range for the day</CardDescription>
+          </CardHeader>
+          <CardContent class="p-0 flex justify-center items-center">
+            {#if pieChartTIRData.length > 0}
+              <TIRPieChart tirData={pieChartTIRData} />
+            {:else}
+              <p class="text-sm text-gray-500 text-center p-4">
+                Average TIR data not available.
+              </p>
+            {/if}
+          </CardContent>
+        </Card>
+      </div>
     </div>
 
     {#if hourlyStatsData.length > 0}
       <div class="bg-white shadow-lg rounded-lg p-4 md:p-6">
-        <h2 class="text-xl font-semibold text-gray-700 mb-4">Detailed Hourly Statistics</h2>
+        <h2 class="text-xl font-semibold text-gray-700 mb-4">
+          Detailed Hourly Statistics
+        </h2>
         <Table>
-          <TableCaption class="text-sm text-gray-500 mt-2">Glucose metrics for each hour of the day.</TableCaption>
+          <TableCaption class="text-sm text-gray-500 mt-2">
+            Glucose metrics for each hour of the day.
+          </TableCaption>
           <TableHeader>
             <TableRow>
               <TableHead>Hour</TableHead>
@@ -92,8 +157,8 @@
               <TableHead>Median Glucose</TableHead>
               <TableHead>Std. Dev.</TableHead>
               <TableHead>TIR: Target (%)</TableHead>
-              <TableHead>TIR: Low (%)</TableHead> {/* Combined Low/V.Low for table simplicity */}
-              <TableHead>TIR: High (%)</TableHead> {/* Combined High/V.High for table simplicity */}
+              <TableHead>TIR: Low (%)</TableHead>
+              <TableHead>TIR: High (%)</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -104,15 +169,18 @@
                 <TableCell>{hourStat.medianGlucose}</TableCell>
                 <TableCell>{hourStat.stdDev}</TableCell>
                 <TableCell>{hourStat.timeInRanges.target}%</TableCell>
-                <TableCell>{hourStat.timeInRanges.low + hourStat.timeInRanges.veryLow}%</TableCell>
-                <TableCell>{hourStat.timeInRanges.high + hourStat.timeInRanges.veryHigh}%</TableCell>
+                <TableCell>
+                  {hourStat.timeInRanges.low + hourStat.timeInRanges.veryLow}%
+                </TableCell>
+                <TableCell>
+                  {hourStat.timeInRanges.high + hourStat.timeInRanges.veryHigh}%
+                </TableCell>
               </TableRow>
             {/each}
           </TableBody>
         </Table>
       </div>
     {/if}
-
   {:else}
     <p class="text-center text-gray-500 py-10">Loading report details...</p>
   {/if}

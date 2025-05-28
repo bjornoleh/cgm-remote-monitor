@@ -7,7 +7,7 @@
     "skipLibCheck": true,
     "checkJs": true,
     "noImplicitAny": true,
-
+    "types": ["svelte"],
     // "typeRoots": ["./@types"],
 
     /* Bundler mode */
@@ -16,7 +16,7 @@
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
-
+    "forceConsistentCasingInFileNames": true,
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,
@@ -24,6 +24,7 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
+
   "include": [
     "global.d.ts",
     "@types/jquery/jquery.d.ts",
