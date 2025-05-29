@@ -1,15 +1,7 @@
 <script lang="ts">
   import type { PageData } from "./$types";
 
-  import {
-    LayerChart,
-    Line,
-    Point,
-    XAxis,
-    YAxis,
-    Tooltip,
-    Legend,
-  } from "layerchart";
+  import { LineChart, Line, Tooltip, Legend, Svg, Axis } from "layerchart";
   import {
     Table,
     TableBody,
@@ -28,7 +20,7 @@
   } from "$lib/components/ui/card"; // Import Card
   import TIRPieChart from "$lib/components/charts/TIRPieChart.svelte"; // Import the pie chart
 
-  let { data }: PageData = $props();
+  let { data } = $props();
 
   const reportDetails = $derived(data.percentileChartReport);
   const percentileSeriesData = $derived(reportDetails?.percentiles || {});
@@ -98,48 +90,14 @@
         </h2>
         {#if percentileChartSeries.length > 0}
           <div class="h-96 md:h-[500px]">
-            <LayerChart
+            <LineChart
               data={percentileChartSeries[0]?.points}
               x="x"
               y="y"
               xDomain={null}
               yDomain={null}
-              seriesKey="name"
               legend={true}
-            >
-              <XAxis dataKey="x" label="Time of Day" grid={true} />
-              <YAxis
-                dataKey="y"
-                label="Glucose (mg/dL)"
-                grid={true}
-                ticks={6}
-              />
-              {#each percentileChartSeries as series (series.name)}
-                <Line
-                  data={series.points}
-                  class={lineColors[series.name] || "stroke-gray-500"}
-                />
-              {/each}
-              <Tooltip let:data let:seriesName>
-                <div
-                  class="p-2 bg-white border border-gray-200 shadow-lg rounded-md text-sm"
-                >
-                  <p class="font-semibold">
-                    {seriesName ? seriesName + " at " : ""}{data.x}
-                  </p>
-                  <p>Glucose: {data.y} mg/dL</p>
-                </div>
-              </Tooltip>
-              <Legend
-                items={percentileChartSeries.map((s) => ({
-                  name: s.name,
-                  color:
-                    lineColors[s.name]
-                      ?.split(" ")[0]
-                      .replace("stroke-", "bg-") || "bg-gray-500",
-                }))}
-              />
-            </LayerChart>
+            ></LineChart>
           </div>
         {:else}
           <p class="text-center text-gray-500 py-10">
