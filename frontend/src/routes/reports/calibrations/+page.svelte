@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { page } from "$app/stores"; // LayerChart imports
+  import { page } from "$app/state";
   import { Point, Axis, Svg, Tooltip, ScatterChart } from "layerchart";
 
   // ShadCN Table component imports
@@ -52,8 +52,8 @@
 
   // Initialize date inputs with current URL parameters or defaults
   $effect(() => {
-    const urlFrom = $page.url.searchParams.get("from");
-    const urlTo = $page.url.searchParams.get("to");
+    const urlFrom = page.url.searchParams.get("from");
+    const urlTo = page.url.searchParams.get("to");
 
     if (urlFrom) {
       fromDate = new Date(parseInt(urlFrom)).toISOString().split("T")[0];
@@ -77,7 +77,7 @@
     const fromTimestamp = new Date(fromDate).getTime();
     const toTimestamp = new Date(toDate + "T23:59:59").getTime(); // End of day
 
-    const url = new URL($page.url);
+    const url = new URL(page.url);
     url.searchParams.set("from", fromTimestamp.toString());
     url.searchParams.set("to", toTimestamp.toString());
     console.log("Navigating to:", url.toString());
@@ -135,7 +135,7 @@
           <Input id="to-date" type="date" bind:value={toDate} />
         </div>
         <div>
-          <Button on:click={updateDateRange} class="w-full md:w-auto">
+          <Button onclick={updateDateRange} class="w-full md:w-auto">
             Update Report
           </Button>
         </div>
