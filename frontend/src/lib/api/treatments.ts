@@ -101,7 +101,6 @@ export async function updateTreatment(treatmentId: string, treatment: Partial<Tr
 		}
 
 		const result = await response.json();
-		
 		return {
 			success: true,
 			message: 'Treatment updated successfully',
