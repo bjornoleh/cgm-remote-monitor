@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { PageData } from "./$types";
 
-  import { LineChart, Bar, Axis } from "layerchart";
+  import { Axis, ScatterChart, Svg } from "layerchart";
   import {
     Table,
     TableBody,
@@ -18,24 +18,43 @@
     CardTitle,
     CardDescription,
   } from "$lib/components/ui/card";
-  import TIRPieChart from "$lib/components/charts/TIRPieChart.svelte"; // Import the pie chart component
+  import TIRPieChart from "$lib/components/charts/TIRPieChart.svelte";
 
-  let { data }: PageData = $props();
-
+  let { data } = $props();
   const reportDetails = $derived(data.distributionReport);
   const distributionPoints = $derived(reportDetails?.distributionData || []);
   const summary = $derived(reportDetails?.summaryMetrics); // Original summary for cards
   const tirPieDataFromServer = $derived(reportDetails?.tirForPieChart); // New data for pie
   const tirPieColors = $derived(reportDetails?.tirColors);
 
-  const histogramChartData = $derived(
-    // Renamed for clarity
-    distributionPoints.map((d) => ({
-      x: d.range,
-      y: d.percent,
-      count: d.count,
-    }))
-  );
+  // Transform distribution data into scatterplot data
+  const scatterplotData = $derived.by(() => {
+    if (!distributionPoints || distributionPoints.length === 0) return [];
+
+    return distributionPoints.map((point) => {
+      // Calculate midpoint of range for x-axis
+      let x: number;
+      if (point.range === "<40") x = 35;
+      else if (point.range === ">300") x = 350;
+      else {
+        const rangeParts = point.range.split("-");
+        if (rangeParts.length === 2) {
+          x = (parseInt(rangeParts[0]) + parseInt(rangeParts[1])) / 2;
+        } else {
+          x = 100; // fallback
+        }
+      }
+
+      return {
+        x: x,
+        y: 1, // Fixed y-value for horizontal layout
+        size: Math.max(point.count / 10, 2), // Scale point size, minimum 2
+        count: point.count,
+        percent: point.percent,
+        range: point.range,
+      };
+    });
+  });
 
   const pieChartTIRData = $derived(
     tirPieDataFromServer && tirPieColors
@@ -68,6 +87,7 @@
         ].filter((segment) => segment.value > 0)
       : []
   ); // Filter out segments with 0 value for cleaner pie chart
+  console.log(distributionPoints);
 </script>
 
 <div class="p-4 md:p-6 bg-gray-100 min-h-screen">
@@ -147,23 +167,32 @@
         </Card>
       </div>
     </div>
-
-    <!-- Histogram -->
-    {#if histogramChartData.length > 0}
+    <!-- Scatterplot Chart -->
+    {#if scatterplotData.length > 0}
       <div class="bg-white shadow-lg rounded-lg p-4 md:p-6 mb-8">
         <h2 class="text-xl font-semibold text-gray-700 mb-4">
-          Distribution of Glucose Readings (%)
+          Glucose Reading Distribution (Scatterplot)
         </h2>
         <div class="h-72 md:h-96">
-          <LineChart
-            data={histogramChartData}
+          <ScatterChart
+            data={scatterplotData}
             x="x"
             y="y"
-            xDomain={null}
-            yDomain={null}
-            yPadding={0.1}
-          ></LineChart>
+            r="size"
+            xDomain={[40, 400]}
+            yDomain={[0.5, 1.5]}
+            padding={{ left: 60, right: 40, top: 20, bottom: 60 }}
+          >
+            <Svg>
+              <Axis placement="bottom" title="Glucose Level (mg/dL)" />
+              <Axis placement="left" title="" ticks={[]} />
+            </Svg>
+          </ScatterChart>
         </div>
+        <p class="text-sm text-gray-600 mt-2">
+          Point size represents the number of readings in each glucose range.
+          Hover over points to see detailed information.
+        </p>
       </div>
     {/if}
 
