@@ -28,11 +28,11 @@
   let { data }: Props = $props();
 
   const clientState = getClientState();
-
   // Component visibility state
   let showBolusCalculator = $state(false);
   let showCarePortal = $state(false);
   let showSettings = $state(false);
+  let showReportsMenu = $state(false);
   let showActionMenu = $state(false);
   let showHelpDialog = $state(false);
   let lastSubmissionStatus = $state<{
@@ -522,6 +522,16 @@
             <span class="text-xl">⚙️</span>
             <span>Settings</span>
           </button>
+          <button
+            onclick={() => {
+              showReportsMenu = true;
+              showActionMenu = false;
+            }}
+            class="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-muted rounded-md transition-colors"
+          >
+            <span class="text-xl">📊</span>
+            <span>Reports</span>
+          </button>
           <hr class="border-border" />
           <button
             onclick={resetToLive}
@@ -596,6 +606,81 @@
       });
     }}
   />
+{/if}
+
+<!-- Reports Menu -->
+{#if showReportsMenu}
+  <div
+    class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+  >
+    <div
+      class="bg-background border border-border rounded-lg max-w-md w-full max-h-[80vh] overflow-auto"
+    >
+      <div class="p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-semibold">Reports</h2>
+          <button
+            onclick={() => (showReportsMenu = false)}
+            class="text-muted-foreground hover:text-foreground text-xl"
+          >
+            ✕
+          </button>
+        </div>
+        <div class="space-y-3">
+          <a
+            href="/reports/hourly-stats"
+            class="block w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg hover:bg-primary/90 transition-colors text-center font-medium"
+          >
+            📊 Hourly Stats Report
+          </a>
+
+          <a
+            href="/reports/treatments"
+            class="block w-full bg-primary text-primary-foreground py-3 px-4 rounded-lg hover:bg-primary/90 transition-colors text-center font-medium"
+          >
+            💉 Treatments Report
+          </a>
+
+          <a
+            href="/reports/daily-stats"
+            class="block w-full bg-secondary text-secondary-foreground py-3 px-4 rounded-lg hover:bg-secondary/90 transition-colors text-center font-medium"
+          >
+            📈 Daily Stats Report
+          </a>
+
+          <a
+            href="/reports/day-to-day"
+            class="block w-full bg-secondary text-secondary-foreground py-3 px-4 rounded-lg hover:bg-secondary/90 transition-colors text-center font-medium"
+          >
+            📅 Day-to-Day Report
+          </a>
+
+          <a
+            href="/reports/distribution"
+            class="block w-full bg-secondary text-secondary-foreground py-3 px-4 rounded-lg hover:bg-secondary/90 transition-colors text-center font-medium"
+          >
+            📊 Distribution Report
+          </a>
+
+          <a
+            href="/reports/calibrations"
+            class="block w-full bg-secondary text-secondary-foreground py-3 px-4 rounded-lg hover:bg-secondary/90 transition-colors text-center font-medium"
+          >
+            🎯 Calibrations Report
+          </a>
+        </div>
+
+        <div class="mt-6 pt-4 border-t border-border">
+          <button
+            onclick={() => (showReportsMenu = false)}
+            class="w-full bg-muted text-muted-foreground py-2 rounded-lg hover:bg-muted/80 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 {/if}
 
 <!-- Help Dialog -->

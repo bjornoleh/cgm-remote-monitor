@@ -22,6 +22,19 @@ export interface Treatment {
 	carbs?: number;
 	insulin?: number;
 	notes?: string;
+	reason?: string;
+	glucose?: number;
+	glucoseType?: string;
+	food?: string;
+	protein?: number;
+	fat?: number;
+	absorptionTime?: number;
+	duration?: number;
+	percent?: number;
+	absolute?: number;
+	rate?: number;
+	profile?: string;
+	enteredBy?: string;
 }
 
 export interface DeviceStatus {
