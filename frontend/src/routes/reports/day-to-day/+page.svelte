@@ -12,6 +12,7 @@
   import PeriodAverages from "$lib/components/reports/PeriodAverages.svelte";
   import TreatmentSummary from "$lib/components/reports/TreatmentSummary.svelte";
   import DailySummaryTable from "$lib/components/reports/DailySummaryTable.svelte";
+  import type { Thresholds } from "$lib/components/reports/types";
   let { data }: { data: PageData } = $props();
   const reportDetails = $derived(data.dayTodayReport);
   const dailyDataPoints = $derived(reportDetails?.dailyData || []);
@@ -20,7 +21,7 @@
   const clientState = getClientState();
 
   // Derive thresholds with fallbacks to match existing hardcoded values
-  const thresholds = $derived.by(() => ({
+  const thresholds: Thresholds = $derived.by(() => ({
     bgLow: clientState.settings?.thresholds?.bgLow || 70,
     bgTargetBottom: clientState.settings?.thresholds?.bgTargetBottom || 70,
     bgTargetTop: clientState.settings?.thresholds?.bgTargetTop || 180,

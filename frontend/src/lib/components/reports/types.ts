@@ -1,11 +1,13 @@
 // Store common type definitions for report components
 
 export interface Thresholds {
+  bgSevereLow: number;
   bgLow: number;
   bgTargetBottom: number;
   bgTargetTop: number;
+  bgTightTargetTop: number;
   bgHigh: number;
-  tightTargetTop: number;
+  bgSevereHigh: number;
 }
 
 export interface ChartDataItem {
@@ -16,37 +18,34 @@ export interface ChartDataItem {
   _id: string;
 }
 
-export interface TreatmentDataItem {
-  timestamp: number;
-  date: Date; // This is a Date object
-  glucoseValue?: number; // Used for plotting context, optional
+// Base treatment interface containing common fields from server data
+export interface BaseTreatment {
+  _id: string;
   eventType: string;
   insulin?: number;
   carbs?: number;
   protein?: number;
   fat?: number;
   notes?: string;
-  _id: string;
-}
-
-// Based on the structure from +page.server.ts and DayToDay report context
-export interface ServerTreatment {
-  _id: string;
-  eventType: string;
-  timestamp: number; // Unix timestamp
-  created_at?: string; // ISO date string, optional since may not always be present
-  date?: string; // Often a string representation of the date part or full ISO, optional
-  insulin?: number;
-  carbs?: number;
-  protein?: number;
-  fat?: number;
-  notes?: string;
-  glucoseContext?: number; // Glucose value at the time of treatment, if available
+  glucoseContext?: number; // Glucose value at the time of treatment
   duration?: number; // For temp basals, etc.
   percent?: number; // For temp basals
   rate?: number; // For temp basals
   absolute?: number; // For temp basals
-  // Add other fields that might be present on a treatment object
+}
+
+// Server treatment data with timestamp and optional created_at/date fields
+export interface ServerTreatment extends BaseTreatment {
+  timestamp: number; // Unix timestamp
+  created_at?: string; // ISO date string, optional since may not always be present
+  date?: string; // Often a string representation of the date part or full ISO, optional
+}
+
+// Client-side treatment data for charting/display with processed date
+export interface TreatmentDataItem extends BaseTreatment {
+  timestamp: number;
+  date: Date; // Processed Date object for client use
+  glucoseValue?: number; // Used for plotting context, optional (alias for glucoseContext)
 }
 
 export interface ProcessedGlucoseEntry {

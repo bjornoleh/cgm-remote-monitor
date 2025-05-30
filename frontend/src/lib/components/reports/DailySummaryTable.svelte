@@ -82,7 +82,7 @@
                   : 0}% TTIR
               </div>
               <div class="text-xs text-gray-500">
-                ({thresholds.bgTargetBottom}-{thresholds.tightTargetTop} mg/dL)
+                ({thresholds.bgTargetBottom}-{thresholds.bgTightTargetTop} mg/dL)
               </div>
               {#if entry.timeInRanges.percentages.low + entry.timeInRanges.percentages.severeLow > 0}
                 <div class="text-red-600">

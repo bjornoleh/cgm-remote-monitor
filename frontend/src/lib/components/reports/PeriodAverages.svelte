@@ -39,7 +39,7 @@
           TIR: {thresholds.bgTargetBottom}-{thresholds.bgTargetTop} mg/dL
         </div>
         <div>
-          TTIR: {thresholds.bgTargetBottom}-{thresholds.tightTargetTop} mg/dL
+          TTIR: {thresholds.bgTargetBottom}-{thresholds.bgTightTargetTop} mg/dL
         </div>
       </div>
     </div>

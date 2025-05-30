@@ -42,7 +42,7 @@
         : 0}%
     </div>
     <div class="text-xs text-gray-500">
-      ({thresholds.bgTargetBottom}-{thresholds.tightTargetTop} mg/dL)
+      ({thresholds.bgTargetBottom}-{thresholds.bgTightTargetTop} mg/dL)
     </div>
   </div>
   <div class="bg-gray-50 p-3 rounded">

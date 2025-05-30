@@ -1,3 +1,5 @@
+import type { Thresholds } from "$lib/components/reports/types";
+
 export interface Entry {
 	_id: string;
 	sgv?: number;
@@ -59,12 +61,7 @@ export interface ClientSettings {
 	heartbeat: number;
 	baseURL: string;
 	authDefaultRoles: string;
-	thresholds: {
-		bgHigh: number;
-		bgTargetTop: number;
-		bgTargetBottom: number;
-		bgLow: number;
-	};
+	thresholds: Thresholds
 }
 
 export interface ClientState {
