@@ -3,6 +3,7 @@ import { apiGet } from "$lib/api";
 import type { SGVEntry } from "$lib/types/nightscout";
 import { calculateBasicStats } from '$lib/utils/calculate/basic-stats';
 import { calculateTimeInRange, DEFAULT_THRESHOLDS, type TimeInRangeMetrics, type AnalysisConfig } from '$lib/utils/calculate/time-in-range';
+import { calculateTreatmentSummary } from '$lib/utils/calculate/treatment-stats';
 import type { Entry } from '../../../app.d.ts';
 
 interface DayToDayData {
@@ -37,6 +38,9 @@ interface DayToDayData {
     totalCarbs: number;
     totalProtein: number;
     totalFat: number;
+    bolusInsulin: number;
+    basalInsulin: number;
+    treatmentCount: number;
     bolusCount: number;
     basalEvents: number;
     mealEvents: number;
@@ -177,6 +181,9 @@ async function processDayData(
         totalCarbs: 0,
         totalProtein: 0,
         totalFat: 0,
+        bolusInsulin: 0,
+        basalInsulin: 0,
+        treatmentCount: 0,
         bolusCount: 0,
         basalEvents: 0,
         mealEvents: 0,
@@ -225,13 +232,20 @@ async function processDayData(
   console.log(
     `Processing ${treatments.length} treatments for ${date.toISOString().split("T")[0]}`
   );
-  console.log("Sample treatments:", treatments.slice(0, 3));
+  console.log("Sample treatments:", treatments.slice(0, 3));  // Calculate treatment summary using utility function
+  // First, convert treatments to the expected format
+  const formattedTreatments = treatments.map(t => ({
+    ...t,
+    timestamp: (t.date || t.mills).toString()
+  }));
 
-  const treatmentSummary = {
-    totalInsulin: treatments.reduce((sum, t) => sum + (t.insulin || 0), 0),
-    totalCarbs: treatments.reduce((sum, t) => sum + (t.carbs || 0), 0),
-    totalProtein: treatments.reduce((sum, t) => sum + (t.protein || 0), 0),
-    totalFat: treatments.reduce((sum, t) => sum + (t.fat || 0), 0),
+  const treatmentSummary = calculateTreatmentSummary(formattedTreatments);
+  // Add additional metrics for compatibility with existing interface
+  const extendedTreatmentSummary = {
+    ...treatmentSummary,
+    treatmentCount: treatmentSummary.treatmentCount ||
+      (treatmentSummary.bolusInsulin > 0 ? 1 : 0) +
+      (treatmentSummary.totalCarbs > 0 ? 1 : 0),
     bolusCount: treatments.filter(
       (t) =>
         t.eventType &&
@@ -249,7 +263,7 @@ async function processDayData(
     ).length,
   };
 
-  console.log("Treatment summary:", treatmentSummary);
+  console.log("Treatment summary:", extendedTreatmentSummary);
   console.log("---");
 
   return {
@@ -263,7 +277,7 @@ async function processDayData(
     trend: calculateTrend(readings),
     glucoseData,
     treatments: treatmentData,
-    treatmentSummary,
+    treatmentSummary: extendedTreatmentSummary,
   };
 }
 
