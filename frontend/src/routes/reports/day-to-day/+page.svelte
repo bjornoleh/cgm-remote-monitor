@@ -580,16 +580,16 @@
                     <div class="text-blue-600">
                       {entry.timeInRanges.tightTimeInRange}% TTIR
                     </div>
-                    {#if entry.timeInRanges.low + entry.timeInRanges.veryLow > 0}
+                    {#if entry.timeInRanges.low + entry.timeInRanges.severeLow > 0}
                       <div class="text-red-600">
-                        {entry.timeInRanges.low + entry.timeInRanges.veryLow}%
+                        {entry.timeInRanges.low + entry.timeInRanges.severeLow}%
                         Low
                       </div>
                     {/if}
-                    {#if entry.timeInRanges.high + entry.timeInRanges.veryHigh > 0}
+                    {#if entry.timeInRanges.high + entry.timeInRanges.severeHigh > 0}
                       <div class="text-orange-600">
-                        {entry.timeInRanges.high + entry.timeInRanges.veryHigh}%
-                        High
+                        {entry.timeInRanges.high +
+                          entry.timeInRanges.severeHigh}% High
                       </div>
                     {/if}
                   {:else}

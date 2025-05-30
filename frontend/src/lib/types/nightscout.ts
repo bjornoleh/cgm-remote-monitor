@@ -36,11 +36,12 @@ export interface CalibrationEntry {
 }
 
 export interface TimeInRanges {
-  veryLow: number;
+  severeLow: number;
   low: number;
   target: number;
+  tightTimeInRange: number;
   high: number;
-  veryHigh: number;
+  severeHigh: number;
 }
 
 export interface DistributionDataPoint {

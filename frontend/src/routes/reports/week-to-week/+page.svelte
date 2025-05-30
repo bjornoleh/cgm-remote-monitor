@@ -41,8 +41,8 @@
       ? [
           {
             name: "Very Low",
-            value: mostRecentWeekTIRData.veryLow,
-            color: tirColors.veryLow,
+            value: mostRecentWeekTIRData.severeLow,
+            color: tirColors.severeLow,
           },
           {
             name: "Low",
@@ -61,8 +61,8 @@
           },
           {
             name: "Very High",
-            value: mostRecentWeekTIRData.veryHigh,
-            color: tirColors.veryHigh,
+            value: mostRecentWeekTIRData.severeHigh,
+            color: tirColors.severeHigh,
           },
         ].filter((segment) => segment.value > 0)
       : []

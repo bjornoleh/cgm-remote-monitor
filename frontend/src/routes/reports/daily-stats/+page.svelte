@@ -20,8 +20,7 @@
   } = $props();
   const reportDetails = $derived(data.dailyStatsReport);
   const currentStats = $derived(reportDetails?.stats);
-  const recentDays = $derived(currentStats?.recentDaysStats || []);
-
+  const dailyData = $derived(currentStats?.recentDaysStats || []); // Renamed for clarity
   // Date selection using DateRangePicker
   const handleDateChange = (params: {
     from?: string;
@@ -30,18 +29,18 @@
   }) => {
     const url = new URL($page.url);
 
-    // For daily stats, we use the 'to' date as the selected date
-    // or if it's a single day selection, use that date
-    if (params.to) {
-      url.searchParams.set("date", params.to);
-    } else if (params.days === 1 && params.from) {
-      url.searchParams.set("date", params.from);
+    // Support both single day and date range selections
+    if (params.from && params.to) {
+      url.searchParams.set("from", params.from);
+      url.searchParams.set("to", params.to);
+      url.searchParams.delete("days");
+      url.searchParams.delete("date");
+    } else if (params.days) {
+      url.searchParams.set("days", params.days.toString());
+      url.searchParams.delete("from");
+      url.searchParams.delete("to");
+      url.searchParams.delete("date");
     }
-
-    // Clean up any range parameters since we only need a single date
-    url.searchParams.delete("from");
-    url.searchParams.delete("to");
-    url.searchParams.delete("days");
 
     goto(url.toString());
   };
@@ -61,64 +60,65 @@
       const weight = index - lower;
       return sorted[lower] * (1 - weight) + sorted[upper] * weight;
     }
-  } // Calculate detailed stats for current day and recent days
+  } // Calculate detailed stats for current day and daily breakdown
   const detailedStats = $derived.by(() => {
     if (!reportDetails?.stats) return [];
 
-    const allDays = [currentStats, ...recentDays].filter(Boolean);
+    // For date ranges, use all the daily data
+    // For single day, combine current stats with the single day data
+    const allDays =
+      dailyData.length > 1
+        ? dailyData
+        : [currentStats, ...dailyData].filter(Boolean);
 
     return allDays
       .map((dayStats) => {
         if (!dayStats) return null;
 
-        // Create a mock array of glucose readings based on the TIR data
-        // This is an approximation since we don't have raw readings
-        const totalReadings = reportDetails.totalReadings || 288; // Default to expected daily readings
-        const mockReadings: number[] = [];
+        // Only use actual glucose readings - no mock data
+        const glucoseReadings = dayStats.glucoseReadings || [];
 
-        // Generate approximate readings based on TIR percentages
-        const counts = {
-          veryLow: Math.round(
-            (dayStats.timeInRanges.veryLow / 100) * totalReadings
-          ),
-          low: Math.round((dayStats.timeInRanges.low / 100) * totalReadings),
-          target: Math.round(
-            (dayStats.timeInRanges.target / 100) * totalReadings
-          ),
-          high: Math.round((dayStats.timeInRanges.high / 100) * totalReadings),
-          veryHigh: Math.round(
-            (dayStats.timeInRanges.veryHigh / 100) * totalReadings
-          ),
-        };
+        // Only calculate stats if we have real glucose readings
+        if (glucoseReadings.length === 0) {
+          return {
+            date: dayStats.date || new Date().toISOString().split("T")[0],
+            lowPercent:
+              dayStats.timeInRanges.low + dayStats.timeInRanges.severeLow,
+            normalPercent: dayStats.timeInRanges.target,
+            highPercent:
+              dayStats.timeInRanges.high + dayStats.timeInRanges.severeHigh,
+            readings: 0,
+            min: "N/A",
+            max: "N/A",
+            average: dayStats.averageGlucose.toFixed(1),
+            stdDev: "N/A",
+            percentile25: "N/A",
+            median: "N/A",
+            percentile75: "N/A",
+          };
+        }
 
-        // Add mock readings for each range (using average values for each range)
-        for (let i = 0; i < counts.veryLow; i++) mockReadings.push(45); // Very low average
-        for (let i = 0; i < counts.low; i++) mockReadings.push(62); // Low average
-        for (let i = 0; i < counts.target; i++)
-          mockReadings.push(dayStats.averageGlucose); // Use actual average
-        for (let i = 0; i < counts.high; i++) mockReadings.push(215); // High average
-        for (let i = 0; i < counts.veryHigh; i++) mockReadings.push(300); // Very high average
-
-        const min = Math.min(...mockReadings) || 0;
-        const max = Math.max(...mockReadings) || 0;
-        const percentile25 = calculatePercentile(mockReadings, 25);
-        const median = calculatePercentile(mockReadings, 50);
-        const percentile75 = calculatePercentile(mockReadings, 75);
+        const min = Math.min(...glucoseReadings);
+        const max = Math.max(...glucoseReadings);
+        const percentile25 = calculatePercentile(glucoseReadings, 25);
+        const median = calculatePercentile(glucoseReadings, 50);
+        const percentile75 = calculatePercentile(glucoseReadings, 75);
 
         return {
           date: dayStats.date || new Date().toISOString().split("T")[0],
-          lowPercent: dayStats.timeInRanges.low + dayStats.timeInRanges.veryLow,
+          lowPercent:
+            dayStats.timeInRanges.low + dayStats.timeInRanges.severeLow,
           normalPercent: dayStats.timeInRanges.target,
           highPercent:
-            dayStats.timeInRanges.high + dayStats.timeInRanges.veryHigh,
-          readings: mockReadings.length,
+            dayStats.timeInRanges.high + dayStats.timeInRanges.severeHigh,
+          readings: glucoseReadings.length,
           min: min.toFixed(1),
           max: max.toFixed(1),
           average: dayStats.averageGlucose.toFixed(1),
           stdDev:
             (dayStats as any).stdDev?.toFixed(1) ||
             (currentStats as any)?.stdDev?.toFixed(1) ||
-            "0.0",
+            "N/A",
           percentile25: percentile25.toFixed(1),
           median: median.toFixed(1),
           percentile75: percentile75.toFixed(1),
@@ -132,13 +132,17 @@
 
     const tir = currentStats.timeInRanges;
     return [
-      { name: "Very Low (<54)", value: tir.veryLow, color: "rgb(239, 68, 68)" }, // red-500
+      {
+        name: "Very Low (<54)",
+        value: tir.severeLow,
+        color: "rgb(239, 68, 68)",
+      }, // red-500
       { name: "Low (54-69)", value: tir.low, color: "rgb(251, 146, 60)" }, // orange-400
       { name: "Target (70-180)", value: tir.target, color: "rgb(34, 197, 94)" }, // green-500
       { name: "High (181-250)", value: tir.high, color: "rgb(251, 191, 36)" }, // amber-400
       {
         name: "Very High (>250)",
-        value: tir.veryHigh,
+        value: tir.severeHigh,
         color: "rgb(239, 68, 68)",
       }, // red-500
     ].filter((segment) => segment.value > 0); // Filter out 0-value segments
@@ -152,17 +156,15 @@
         {reportDetails.reportName}
       </h1>
       <p class="text-xs md:text-sm text-gray-600">
-        For date: {currentStats
-          ? new Date(currentStats.date).toLocaleDateString(undefined, {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })
-          : "N/A"} (Generated: {reportDetails.generatedDate})
+        Generated: {reportDetails.generatedDate}
       </p>
       {#if reportDetails.dateRange}
         <p class="text-xs md:text-sm text-gray-600">
-          Report for: {reportDetails.dateRange.target}
+          Date Range: {reportDetails.dateRange.from} - {reportDetails.dateRange
+            .to}
+          {reportDetails.dateRange.days
+            ? `(${reportDetails.dateRange.days} day${reportDetails.dateRange.days > 1 ? "s" : ""})`
+            : ""}
         </p>
       {/if}
       {#if reportDetails.totalReadings}
@@ -172,7 +174,7 @@
       {/if}
     </header>
     <DateRangePicker
-      title="Select Date for Daily Stats"
+      title="Select Date Range for Daily Stats"
       showDaysPresets={true}
       defaultDays={1}
       onDateChange={handleDateChange}
@@ -201,10 +203,137 @@
         </div>
       {/if}
 
+      <!-- Glycemic Variability Metrics -->
+      {#if currentStats?.glycemicVariability}
+        <div class="bg-white shadow-lg rounded-lg p-4 md:p-6 mb-8">
+          <h2 class="text-xl font-semibold text-gray-700 mb-4">
+            Glycemic Variability Metrics
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Basic Variability Metrics -->
+            <div class="bg-gray-50 rounded-lg p-4">
+              <h3 class="text-sm font-medium text-gray-600 mb-2">
+                Basic Metrics
+              </h3>
+              <div class="space-y-2">
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-700">
+                    Coefficient of Variation:
+                  </span>
+                  <span class="text-sm font-medium">
+                    {currentStats.glycemicVariability.coefficientOfVariation}%
+                  </span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-700">Standard Deviation:</span>
+                  <span class="text-sm font-medium">
+                    {currentStats.glycemicVariability.standardDeviation} mg/dL
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Advanced Variability Metrics -->
+            <div class="bg-gray-50 rounded-lg p-4">
+              <h3 class="text-sm font-medium text-gray-600 mb-2">
+                Advanced Metrics
+              </h3>
+              <div class="space-y-2">
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-700">MAGE:</span>
+                  <span class="text-sm font-medium">
+                    {currentStats.glycemicVariability
+                      .meanAmplitudeGlycemicExcursions} mg/dL
+                  </span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-700">CONGA (2h):</span>
+                  <span class="text-sm font-medium">
+                    {currentStats.glycemicVariability
+                      .continuousOverlappingNetGlycemicAction} mg/dL
+                  </span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-700">J-Index:</span>
+                  <span class="text-sm font-medium">
+                    {currentStats.glycemicVariability.jIndex}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Risk Indices -->
+            <div class="bg-gray-50 rounded-lg p-4">
+              <h3 class="text-sm font-medium text-gray-600 mb-2">
+                Risk Indices
+              </h3>
+              <div class="space-y-2">
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-700">HBGI:</span>
+                  <span class="text-sm font-medium text-orange-600">
+                    {currentStats.glycemicVariability.highBloodGlucoseIndex}
+                  </span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-700">LBGI:</span>
+                  <span class="text-sm font-medium text-red-600">
+                    {currentStats.glycemicVariability.lowBloodGlucoseIndex}
+                  </span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-700">ADRR:</span>
+                  <span class="text-sm font-medium">
+                    {currentStats.glycemicVariability.averageDailyRiskRange}
+                  </span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-700">Lability Index:</span>
+                  <span class="text-sm font-medium">
+                    {currentStats.glycemicVariability.labilityIndex}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Metrics Explanations -->
+          <div class="mt-4 p-3 bg-blue-50 rounded-lg">
+            <h4 class="text-sm font-medium text-blue-800 mb-2">
+              Metric Explanations:
+            </h4>
+            <div class="text-xs text-blue-700 space-y-1">
+              <p>
+                <strong>HBGI/LBGI:</strong>
+                 High/Low Blood Glucose Index - risk indices for hyperglycemia and
+                hypoglycemia. Lower values are better.
+              </p>
+              <p>
+                <strong>MAGE:</strong>
+                 Mean Amplitude of Glycemic Excursions - measures glucose variability
+                excluding small fluctuations.
+              </p>
+              <p>
+                <strong>CONGA:</strong>
+                 Continuous Overlapping Net Glycemic Action - measures glucose variability
+                over time periods.
+              </p>
+              <p>
+                <strong>CV:</strong>
+                 Coefficient of Variation - standardized measure of glucose variability.
+                Target: &lt;36%
+              </p>
+            </div>
+          </div>
+        </div>
+      {/if}
+
       <!-- Daily Stats Table -->
       <div class="bg-white shadow-lg rounded-lg p-4 md:p-6 mb-8">
         <h2 class="text-xl font-semibold text-gray-700 mb-4">
-          Daily Statistics
+          Daily Breakdown
+          {#if reportDetails?.dateRange?.days && reportDetails.dateRange.days > 1}
+            ({reportDetails.dateRange.days} days)
+          {/if}
         </h2>
         {#if detailedStats.length > 0}
           <div class="overflow-x-auto">
@@ -212,6 +341,7 @@
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
+                  <TableHead>TIR</TableHead>
                   <TableHead class="text-right">Low</TableHead>
                   <TableHead class="text-right">Normal</TableHead>
                   <TableHead class="text-right">High</TableHead>
@@ -236,6 +366,13 @@
                         year: "numeric",
                       })}
                     </TableCell>
+                    <TableCell class="text-right">
+                      <!-- TIR visualization could be added here -->
+                      {dayData.lowPercent +
+                        dayData.normalPercent +
+                        dayData.highPercent}%
+                    </TableCell>
+
                     <TableCell class="text-right text-red-600">
                       {dayData.lowPercent}%
                     </TableCell>

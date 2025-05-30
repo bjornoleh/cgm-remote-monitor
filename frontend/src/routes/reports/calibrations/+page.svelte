@@ -73,7 +73,6 @@
   });
 
   const updateDateRange = () => {
-    alert("!!!");
     const fromTimestamp = new Date(fromDate).getTime();
     const toTimestamp = new Date(toDate + "T23:59:59").getTime(); // End of day
 

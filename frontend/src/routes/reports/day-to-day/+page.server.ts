@@ -1,6 +1,9 @@
 import type { PageServerLoad } from "./$types";
 import { apiGet } from "$lib/api";
-import type { SGVEntry, TimeInRanges } from "$lib/types/nightscout";
+import type { SGVEntry } from "$lib/types/nightscout";
+import { calculateBasicStats } from '$lib/utils/calculate/basic-stats';
+import { calculateTimeInRange, DEFAULT_THRESHOLDS, type TimeInRangeMetrics, type AnalysisConfig } from '$lib/utils/calculate/time-in-range';
+import type { Entry } from '../../../app.d.ts';
 
 interface DayToDayData {
   date: string;
@@ -8,7 +11,7 @@ interface DayToDayData {
   minGlucose: number;
   maxGlucose: number;
   stdDev: number;
-  timeInRanges: TimeInRanges;
+  timeInRanges: TimeInRangeMetrics;
   readingsCount: number;
   trend: "rising" | "falling" | "stable";
   glucoseData: Array<{
@@ -40,71 +43,56 @@ interface DayToDayData {
   };
 }
 
-/** Calculate time in ranges from glucose readings */
-function calculateTimeInRanges(readings: SGVEntry[]): TimeInRanges {
+/**
+ * Convert SGV entries to Entry format for calculation utilities
+ */
+function convertToEntries(readings: SGVEntry[]): Entry[] {
+  return readings.map(reading => ({
+    _id: reading._id,
+    type: reading.type,
+    sgv: reading.sgv,
+    mills: reading.date,
+    date: reading.date
+  }));
+}
+
+/** Calculate time in ranges from glucose readings using utility functions */
+function calculateTimeInRanges(readings: SGVEntry[]): TimeInRangeMetrics {
   if (readings.length === 0) {
     return {
-      veryLow: 0,
-      low: 0,
-      target: 0,
-      tightTimeInRange: 0,
-      high: 0,
-      veryHigh: 0,
+      percentages: { severeLow: 0, low: 0, target: 0, high: 0, severeHigh: 0 },
+      durations: { severeLow: 0, low: 0, target: 0, high: 0, severeHigh: 0 },
+      episodes: { severeLow: 0, low: 0, high: 0, severeHigh: 0 }
     };
   }
 
-  const counts = {
-    veryLow: 0, // <54 mg/dL
-    low: 0, // 54-69 mg/dL
-    target: 0, // 70-180 mg/dL
-    tightTimeInRange: 0, // 70-140 mg/dL (tight range)
-    high: 0, // 181-250 mg/dL
-    veryHigh: 0, // >250 mg/dL
+  // Use the standardized time in range calculation
+  const entries = convertToEntries(readings);
+  const tirConfig: AnalysisConfig = {
+    thresholds: DEFAULT_THRESHOLDS,
+    sensorType: 'GENERIC_5MIN' as const
   };
+  const tirMetrics = calculateTimeInRange(entries, tirConfig);
 
-  readings.forEach((reading) => {
-    const glucose = reading.sgv;
-    if (glucose < 54) counts.veryLow++;
-    else if (glucose <= 69) counts.low++;
-    else if (glucose <= 180) counts.target++;
-    else if (glucose <= 250) counts.high++;
-    else counts.veryHigh++;
-
-    // Calculate tight time in range (70-140 mg/dL)
-    if (glucose >= 70 && glucose <= 140) {
-      counts.tightTimeInRange++;
-    }
-  });
-
-  const total = readings.length;
-  return {
-    veryLow: Math.round((counts.veryLow / total) * 100),
-    low: Math.round((counts.low / total) * 100),
-    target: Math.round((counts.target / total) * 100),
-    tightTimeInRange: Math.round((counts.tightTimeInRange / total) * 100),
-    high: Math.round((counts.high / total) * 100),
-    veryHigh: Math.round((counts.veryHigh / total) * 100),
-  };
+  return tirMetrics;
 }
 
-/** Calculate average glucose from readings */
+/** Calculate average glucose from readings using utility functions */
 function calculateAverageGlucose(readings: SGVEntry[]): number {
   if (readings.length === 0) return 0;
-  const sum = readings.reduce((total, reading) => total + reading.sgv, 0);
-  return Math.round(sum / readings.length);
+
+  const glucoseValues = readings.map(reading => reading.sgv);
+  const stats = calculateBasicStats(glucoseValues);
+  return Math.round(stats.mean);
 }
 
-/** Calculate standard deviation of glucose readings */
+/** Calculate standard deviation of glucose readings using utility functions */
 function calculateStandardDeviation(readings: SGVEntry[]): number {
   if (readings.length === 0) return 0;
 
-  const avg = calculateAverageGlucose(readings);
-  const squaredDiffs = readings.map((reading) =>
-    Math.pow(reading.sgv - avg, 2)
-  );
-  const avgSquaredDiff =
-    squaredDiffs.reduce((sum, diff) => sum + diff, 0) / readings.length;
-  return Math.round(Math.sqrt(avgSquaredDiff));
+  const glucoseValues = readings.map(reading => reading.sgv);
+  const stats = calculateBasicStats(glucoseValues);
+  return Math.round(stats.standardDeviation);
 }
 
 /** Determine glucose trend based on recent readings */
@@ -175,14 +163,10 @@ async function processDayData(
       averageGlucose: 0,
       minGlucose: 0,
       maxGlucose: 0,
-      stdDev: 0,
-      timeInRanges: {
-        veryLow: 0,
-        low: 0,
-        target: 0,
-        tightTimeInRange: 0,
-        high: 0,
-        veryHigh: 0,
+      stdDev: 0,      timeInRanges: {
+        percentages: { severeLow: 0, low: 0, target: 0, high: 0, severeHigh: 0 },
+        durations: { severeLow: 0, low: 0, target: 0, high: 0, severeHigh: 0 },
+        episodes: { severeLow: 0, low: 0, high: 0, severeHigh: 0 }
       },
       readingsCount: 0,
       trend: "stable",

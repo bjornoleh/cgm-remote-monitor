@@ -45,16 +45,16 @@ export function formatTime(date: Date, timeFormat: number = 12, compact: boolean
 /**
  * Calculate delta between two BG readings
  */
-export function calculateDelta(current: Entry, previous: Entry, units: string = 'mg/dl') {
+export function calculateDelta(current: Entry, previous: Entry, unit: string = 'mg/dl') {
 	if (!current || !previous) return null;
-	
+
 	const currentValue = current.sgv || current.mgdl || 0;
 	const previousValue = previous.sgv || previous.mgdl || 0;
 	const diff = currentValue - previousValue;
-	
-	const scaledDiff = units === 'mmol' ? units.mgdlToMMOL(Math.abs(diff)) : Math.abs(diff);
+
+	const scaledDiff = unit === 'mmol' ? units.mgdlToMMOL(Math.abs(diff)) : Math.abs(diff);
 	const sign = diff >= 0 ? '+' : '-';
-	
+
 	return {
 		display: `${sign}${scaledDiff}`,
 		value: diff,
@@ -112,7 +112,7 @@ export function getBGColorClass(status: string) {
 		'low': 'bg-yellow-500 text-black',
 		'in-range': 'bg-green-500 text-white'
 	};
-	
+
 	return colors[status] || 'bg-gray-500 text-white';
 }
 

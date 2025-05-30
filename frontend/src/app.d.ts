@@ -29,9 +29,9 @@ export interface DeviceStatus {
 	_id: string;
 	device: string;
 	created_at: string;
-	pump?: any;
-	uploader?: any;
-	loop?: any;
+	pump?: Record<string, unknown>;
+	uploader?: Record<string, unknown>;
+	loop?: Record<string, unknown>;
 }
 
 export interface ServerSettings {
@@ -40,15 +40,16 @@ export interface ServerSettings {
 	head: string;
 	apiEnabled: boolean;
 	runtimeState: string;
-	settings: any;
-	authorized?: any;
+	settings: Record<string, unknown>;
+	authorized?: Record<string, unknown>;
 }
 
-declare global {
-	namespace App {
+declare global {	namespace App {
 		// interface Error {}
 		// interface Locals {}
-		interface PageData {
+
+		// Base page data interface for the main app
+		interface BasePageData {
 			loading: boolean;
 			loadingMessage?: string;
 			error?: string;
@@ -61,6 +62,11 @@ declare global {
 				history: number;
 				focusHours: number;
 			};
+		}
+
+		// Main PageData interface that allows additional properties for reports
+		interface PageData extends Partial<BasePageData> {
+			[key: string]: any;
 		}
 		// interface PageState {}
 		// interface Platform {}

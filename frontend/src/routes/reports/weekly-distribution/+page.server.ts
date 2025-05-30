@@ -2,7 +2,7 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
   const fetchData = async () => {
-    await new Promise(resolve => setTimeout(resolve, 50)); 
+    await new Promise(resolve => setTimeout(resolve, 50));
 
     const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
     const weeklyDistributionData = daysOfWeek.map(day => {
@@ -14,18 +14,18 @@ export const load: PageServerLoad = async ({ params }) => {
         median: values[Math.floor(values.length / 2)].toFixed(0),
         q3: values[Math.floor(values.length * 3 / 4)].toFixed(0),
         max: Math.max(...values).toFixed(0),
-        outliers: [] 
+        outliers: []
       };
     });
 
     // Simulate overall average weekly TIR based on average of daily medians
-    let overallAverageWeeklyTIR = { veryLow: 5, low: 10, target: 70, high: 10, veryHigh: 5 }; // Default
+    let overallAverageWeeklyTIR = { severeLow: 5, low: 10, target: 70, high: 10, severeHigh: 5 }; // Default
     if (weeklyDistributionData.length > 0) {
       const averageMedian = weeklyDistributionData.reduce((sum, day) => sum + parseFloat(day.median), 0) / weeklyDistributionData.length;
       if (averageMedian < 90) {
-        overallAverageWeeklyTIR = { veryLow: 7, low: 14, target: 63, high: 11, veryHigh: 5 };
+        overallAverageWeeklyTIR = { severeLow: 7, low: 14, target: 63, high: 11, severeHigh: 5 };
       } else if (averageMedian > 130) {
-        overallAverageWeeklyTIR = { veryLow: 4, low: 8, target: 60, high: 16, veryHigh: 12 };
+        overallAverageWeeklyTIR = { severeLow: 4, low: 8, target: 60, high: 16, severeHigh: 12 };
       }
     }
     // Normalize overallAverageWeeklyTIR
@@ -38,7 +38,7 @@ export const load: PageServerLoad = async ({ params }) => {
        let currentSum = Object.values(overallAverageWeeklyTIR).reduce((s,v)=>s+v,0);
       if (currentSum !== 100 && overallAverageWeeklyTIR.target) {
         overallAverageWeeklyTIR.target += (100 - currentSum);
-      } else if (currentSum !== 100) { 
+      } else if (currentSum !== 100) {
           // Fallback if target is not defined or doesn't resolve sum
           // Adjust the largest category if target is not present or sum is still off.
           let largestKey = null;
@@ -54,13 +54,13 @@ export const load: PageServerLoad = async ({ params }) => {
           }
       }
     }
-    
+
     const tirColors = {
-      veryLow: 'bg-red-700',
+      severeLow: 'bg-red-700',
       low: 'bg-red-500',
       target: 'bg-green-500',
       high: 'bg-yellow-400',
-      veryHigh: 'bg-yellow-600',
+      severeHigh: 'bg-yellow-600',
     };
 
     return {

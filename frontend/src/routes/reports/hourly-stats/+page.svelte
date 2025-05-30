@@ -19,13 +19,12 @@
     CardDescription,
   } from "$lib/components/ui/card";
   import TIRPieChart from "$lib/components/charts/TIRPieChart.svelte";
+  import tirColors from "$lib/constants/tir-colors.js";
 
-  let { data }: PageData = $props();
+  let { data } = $props();
 
-  const reportDetails = $derived(data.hourlyStatsReport);
-  const hourlyStatsData = $derived(reportDetails?.hourlyStats || []);
-  const avgDailyTIRData = $derived(reportDetails?.averageDailyTIR);
-  const tirColors = $derived(reportDetails?.tirColors);
+  const hourlyStatsData = $derived(data?.hourlyStats || []);
+  const avgDailyTIRData = $derived(data?.averageDailyTIR);
 
   const hourlyAvgGlucoseChartData = $derived(
     hourlyStatsData.map((stat) => ({
@@ -41,8 +40,8 @@
       ? [
           {
             name: "Very Low (<54)",
-            value: avgDailyTIRData.veryLow,
-            color: tirColors.veryLow,
+            value: avgDailyTIRData.severeLow,
+            color: tirColors.severeLow,
           },
           {
             name: "Low (54-69)",
@@ -61,8 +60,8 @@
           },
           {
             name: "Very High (>250)",
-            value: avgDailyTIRData.veryHigh,
-            color: tirColors.veryHigh,
+            value: avgDailyTIRData.severeHigh,
+            color: tirColors.severeHigh,
           },
         ].filter((segment) => segment.value > 0)
       : []
@@ -70,13 +69,13 @@
 </script>
 
 <div class="p-4 md:p-6 bg-gray-100 min-h-screen">
-  {#if reportDetails}
+  {#if data}
     <header class="mb-6">
       <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-1">
-        {reportDetails.reportName}
+        {data.reportName}
       </h1>
       <p class="text-xs md:text-sm text-gray-600">
-        Generated on: {reportDetails.generatedDate}
+        Generated on: {data.generatedDate}
       </p>
     </header>
 
@@ -170,10 +169,11 @@
                 <TableCell>{hourStat.stdDev}</TableCell>
                 <TableCell>{hourStat.timeInRanges.target}%</TableCell>
                 <TableCell>
-                  {hourStat.timeInRanges.low + hourStat.timeInRanges.veryLow}%
+                  {hourStat.timeInRanges.low + hourStat.timeInRanges.severeLow}%
                 </TableCell>
                 <TableCell>
-                  {hourStat.timeInRanges.high + hourStat.timeInRanges.veryHigh}%
+                  {hourStat.timeInRanges.high +
+                    hourStat.timeInRanges.severeHigh}%
                 </TableCell>
               </TableRow>
             {/each}

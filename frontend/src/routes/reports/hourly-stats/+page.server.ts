@@ -1,161 +1,180 @@
 import type { PageServerLoad } from "./$types";
+import { apiGet } from "$lib/api";
+import type { SGVEntry } from "$lib/types/nightscout";
+import { calculateBasicStats } from '$lib/utils/calculate/basic-stats';
+import { calculateTimeInRange, DEFAULT_THRESHOLDS, type TimeInRangeMetrics, type AnalysisConfig } from '$lib/utils/calculate/time-in-range';
+import type { Entry } from '../../../app.d.ts';
 
-export const load: PageServerLoad = async () => {
+interface HourlyStats {
+  hourLabel: string;
+  averageGlucose: number;
+  medianGlucose: number;
+  stdDev: number;
+  timeInRanges: TimeInRangeMetrics;
+}
+
+/**
+ * Convert SGV entries to Entry format for calculation utilities
+ */
+function convertToEntries(readings: SGVEntry[]): Entry[] {
+  return readings.map(reading => ({
+    _id: reading._id,
+    sgv: reading.sgv,
+    date: reading.date,
+    mills: reading.mills,
+    type: reading.type,
+    direction: reading.direction
+  }));
+}
+
+/**
+ * Calculate hourly statistics from glucose readings
+ */
+function calculateHourlyStats(readings: SGVEntry[]): HourlyStats[] {
+  // Group readings by hour
+  const groupedByHour: Record<string, SGVEntry[]> = {};
+  for (let i = 0; i < 24; i++) {
+    groupedByHour[i.toString().padStart(2, "0")] = [];
+  }
+
+  readings.forEach((reading) => {
+    // Ensure sgv is within a reasonable range for CGM data
+    if (reading.sgv >= 39 && reading.sgv <= 600) {
+      const hour = new Date(reading.date).getHours().toString().padStart(2, "0");
+      if (groupedByHour[hour]) {
+        groupedByHour[hour].push(reading);
+      }
+    }
+  });
+
+  const hourlyDataPoints: HourlyStats[] = Array.from({ length: 24 }, (_, i) => {
+    const hour = i.toString().padStart(2, "0");
+    const hourLabel = hour + ":00";
+    const hourReadings = groupedByHour[hour] || [];    if (hourReadings.length === 0) {
+      // Return empty stats for hours with no data
+      return {
+        hourLabel,
+        averageGlucose: 0,
+        medianGlucose: 0,
+        stdDev: 0,
+        timeInRanges: {
+          percentages: { severeLow: 0, low: 0, target: 0, high: 0, severeHigh: 0 },
+          durations: { severeLow: 0, low: 0, target: 0, high: 0, severeHigh: 0 },
+          episodes: { severeLow: 0, low: 0, high: 0, severeHigh: 0 },
+        },
+      };
+    }
+
+    // Calculate basic statistics using utility functions
+    const glucoseValues = hourReadings.map(reading => reading.sgv);
+    const basicStats = calculateBasicStats(glucoseValues);
+
+    // Calculate time in ranges using utility functions
+    const entries = convertToEntries(hourReadings);
+    const tirConfig: AnalysisConfig = {
+      thresholds: DEFAULT_THRESHOLDS,
+      sensorType: 'GENERIC_5MIN' as const
+    };
+    const tirMetrics = calculateTimeInRange(entries, tirConfig);
+
+    return {
+      hourLabel,
+      averageGlucose: Math.round(basicStats.mean),
+      medianGlucose: Math.round(basicStats.median),
+      stdDev: Math.round(basicStats.standardDeviation),
+      timeInRanges: tirMetrics,
+    };
+  });
+
+  return hourlyDataPoints;
+}
+
+
+
+export const load: PageServerLoad = async ({ fetch, url }) => {
   const fetchData = async () => {
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    const hourlyDataPoints = Array.from({ length: 24 }, (_, i) => {
-      const hour = i.toString().padStart(2, "0") + ":00";
-      // Simulate slightly more realistic TIR distribution per hour
-      let target = Math.round(Math.random() * 40 + 50); // 50-90%
-      let low = Math.round((Math.random() * (100 - target)) / 3);
-      let veryLow = Math.round((Math.random() * (100 - target - low)) / 2);
-      let high = Math.round(
-        (Math.random() * (100 - target - low - veryLow)) / 1.5
-      );
-      let veryHigh = Math.max(0, 100 - target - low - veryLow - high);
-      let tightTimeInRange = Math.round(target * 0.8); // Approximate TTIR as 80% of target range
+    try {      // Get date range parameters from URL or use defaults
+      const { searchParams } = url;
+      const daysBack = parseInt(searchParams.get("days") || "30");
+      const now = new Date();
+      const endDate = new Date(now.getTime());
+      const startDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
 
-      // Normalize to ensure sum is 100 for each hour
-      const sum = target + low + veryLow + high + veryHigh;
-      if (sum > 0) {
-        const sf = 100 / sum;
-        target = Math.round(target * sf);
-        low = Math.round(low * sf);
-        veryLow = Math.round(veryLow * sf);
-        high = Math.round(high * sf);
-        // Ensure sum is 100 by adjusting the largest component (usually target or veryHigh if target is small)
-        // For this specific logic, veryHigh takes the remainder.
-        let currentSum = target + low + veryLow + high;
-        veryHigh = 100 - currentSum;
-        if (veryHigh < 0) {
-          // If veryHigh becomes negative, set to 0 and adjust target
-          veryHigh = 0;
-          currentSum = target + low + veryLow + high; // re-sum without veryHigh
-          target = 100 - (low + veryLow + high); // target takes the hit
+      // Fetch glucose entries from Nightscout API
+      const startTime = startDate.getTime();
+      const endTime = endDate.getTime();
+
+      const entriesResponse = await apiGet<SGVEntry[]>(
+        fetch,
+        "/api/v1/entries.json",
+        {
+          params: {
+            "find[date][$gte]": startTime.toString(),
+            "find[date][$lte]": endTime.toString(),
+            "find[type]": "sgv",
+            count: "10000", // Get a large number to ensure we have all data
+          },
+          throwOnError: false,        }
+      );
+
+      if (!entriesResponse.success || !entriesResponse.data) {
+        console.error("Failed to fetch glucose entries:", entriesResponse.error);
+        throw new Error("Failed to fetch glucose data");
+      }
+
+      const readings = entriesResponse.data;
+      console.log(`Fetched ${readings.length} glucose readings for hourly stats`);
+
+      // Calculate hourly statistics using the calculation utilities
+      const hourlyDataPoints = calculateHourlyStats(readings);
+
+      // Calculate average daily TIR from hourly metrics
+      const avgDailyTIR = {
+        severeLow: 0,
+        low: 0,
+        target: 0,
+        high: 0,
+        severeHigh: 0,
+      };
+
+      if (hourlyDataPoints.length > 0) {
+        for (const hourStat of hourlyDataPoints) {
+          avgDailyTIR.severeLow += hourStat.timeInRanges.percentages.severeLow;
+          avgDailyTIR.low += hourStat.timeInRanges.percentages.low;
+          avgDailyTIR.target += hourStat.timeInRanges.percentages.target;
+          avgDailyTIR.high += hourStat.timeInRanges.percentages.high;
+          avgDailyTIR.severeHigh += hourStat.timeInRanges.percentages.severeHigh;
         }
-        // Recalculate TTIR after normalization
-        tightTimeInRange = Math.round(target * 0.8);
+        const numHours = hourlyDataPoints.length;
+        avgDailyTIR.severeLow = Math.round(avgDailyTIR.severeLow / numHours);
+        avgDailyTIR.low = Math.round(avgDailyTIR.low / numHours);
+        avgDailyTIR.target = Math.round(avgDailyTIR.target / numHours);
+        avgDailyTIR.high = Math.round(avgDailyTIR.high / numHours);
+        avgDailyTIR.severeHigh = Math.round(avgDailyTIR.severeHigh / numHours);
+
+        // Normalize to ensure sum is 100%
+        const tirSum = avgDailyTIR.severeLow + avgDailyTIR.low + avgDailyTIR.target + avgDailyTIR.high + avgDailyTIR.severeHigh;
+        if (tirSum > 0) {
+          const scale = 100 / tirSum;
+          avgDailyTIR.severeLow = Math.round(avgDailyTIR.severeLow * scale);
+          avgDailyTIR.low = Math.round(avgDailyTIR.low * scale);
+          avgDailyTIR.high = Math.round(avgDailyTIR.high * scale);
+          avgDailyTIR.severeHigh = Math.round(avgDailyTIR.severeHigh * scale);
+          // Adjust target to ensure sum is 100
+          avgDailyTIR.target = 100 - avgDailyTIR.severeLow - avgDailyTIR.low - avgDailyTIR.high - avgDailyTIR.severeHigh;
+        }
       }
 
       return {
-        hourLabel: hour,
-        averageGlucose: Math.round(90 + Math.random() * 50),
-        medianGlucose: Math.round(90 + Math.random() * 50 - 5),
-        stdDev: Math.round(10 + Math.random() * 5),
-        timeInRanges: {
-          veryLow,
-          low,
-          target,
-          tightTimeInRange,
-          high,
-          veryHigh,
-        },
-      };
-    }); // Calculate average daily TIR
-    const avgDailyTIR = {
-      veryLow: 0,
-      low: 0,
-      target: 0,
-      tightTimeInRange: 0,
-      high: 0,
-      veryHigh: 0,
-    };
-    if (hourlyDataPoints.length > 0) {
-      for (const hourStat of hourlyDataPoints) {
-        avgDailyTIR.veryLow += hourStat.timeInRanges.veryLow;
-        avgDailyTIR.low += hourStat.timeInRanges.low;
-        avgDailyTIR.target += hourStat.timeInRanges.target;
-        avgDailyTIR.tightTimeInRange += hourStat.timeInRanges.tightTimeInRange;
-        avgDailyTIR.high += hourStat.timeInRanges.high;
-        avgDailyTIR.veryHigh += hourStat.timeInRanges.veryHigh;
-      }
-      const numHours = hourlyDataPoints.length;
-      avgDailyTIR.veryLow = Math.round(avgDailyTIR.veryLow / numHours);
-      avgDailyTIR.low = Math.round(avgDailyTIR.low / numHours);
-      avgDailyTIR.target = Math.round(avgDailyTIR.target / numHours);
-      avgDailyTIR.tightTimeInRange = Math.round(
-        avgDailyTIR.tightTimeInRange / numHours
-      );
-      avgDailyTIR.high = Math.round(avgDailyTIR.high / numHours);
-      avgDailyTIR.veryHigh = Math.round(avgDailyTIR.veryHigh / numHours);
-
-      // Normalize avgDailyTIR to sum to 100% (excluding tightTimeInRange since it overlaps with target)
-      const tirSum =
-        avgDailyTIR.veryLow +
-        avgDailyTIR.low +
-        avgDailyTIR.target +
-        avgDailyTIR.high +
-        avgDailyTIR.veryHigh;
-      if (tirSum > 0) {
-        const scale = 100 / tirSum;
-        avgDailyTIR.veryLow = Math.round(avgDailyTIR.veryLow * scale);
-        avgDailyTIR.low = Math.round(avgDailyTIR.low * scale);
-        avgDailyTIR.high = Math.round(avgDailyTIR.high * scale);
-        avgDailyTIR.veryHigh = Math.round(avgDailyTIR.veryHigh * scale);
-        // Adjust target to ensure sum is 100
-        avgDailyTIR.target =
-          100 -
-          avgDailyTIR.veryLow -
-          avgDailyTIR.low -
-          avgDailyTIR.high -
-          avgDailyTIR.veryHigh;
-        // If target becomes negative due to rounding, set to 0 and distribute deficit to largest remaining positive.
-        if (avgDailyTIR.target < 0) {
-          const deficit = avgDailyTIR.target; // This will be negative
-          avgDailyTIR.target = 0;
-          // Distribute deficit. For simplicity, add to 'low' if positive, else 'high', etc.
-          // // This is a simplistic way to handle it, a more robust method would find the largest share.
-          const positiveCategories = Object.entries(avgDailyTIR).filter(
-            ([k, v]) => v > 0 && k !== "target" && k !== "tightTimeInRange"
-          );
-          if (positiveCategories.length > 0) {
-            // Find the category that was largest before target adjustment and try to add there.
-            // Or simply add to the first one that can take it, e.g. 'low' or 'high'
-            let largestCat: keyof typeof avgDailyTIR = "low"; // default
-            if (avgDailyTIR.high > avgDailyTIR.low) largestCat = "high";
-            if (avgDailyTIR.veryLow > avgDailyTIR[largestCat])
-              largestCat = "veryLow";
-            if (avgDailyTIR.veryHigh > avgDailyTIR[largestCat])
-              largestCat = "veryHigh";
-
-            avgDailyTIR[largestCat] += deficit; // deficit is negative, so this subtracts
-            // Ensure it does not go below zero
-            if (avgDailyTIR[largestCat] < 0) {
-              // if this happens, the normalization logic is still imperfect for edge cases.
-              // For this exercise, we accept small discrepancies if this complex case is hit.
-            }
-          }
-          // Re-ensure sum is 100 by adjusting target again if other categories were floored.
-          // This can get complex with rounding. The provided logic for target taking the remainder is usually sufficient.
-          avgDailyTIR.target =
-            100 -
-            avgDailyTIR.veryLow -
-            avgDailyTIR.low -
-            avgDailyTIR.high -
-            avgDailyTIR.veryHigh;
-        }
-      }
+        reportName: "Hourly Statistics Report",
+        generatedDate: new Date().toLocaleDateString(),
+        hourlyStats: hourlyDataPoints,
+        averageDailyTIR: avgDailyTIR
+      };} catch (error) {
+      console.error("Error in fetchData:", error);
+      throw error;
     }
-
-    const tirColors = {
-      veryLow: "bg-red-700",
-      low: "bg-red-500",
-      target: "bg-green-500",
-      high: "bg-yellow-400",
-      veryHigh: "bg-yellow-600",
-    };
-
-    return {
-      reportName: "Hourly Statistics Report",
-      generatedDate: new Date().toLocaleDateString(),
-      hourlyStats: hourlyDataPoints,
-      averageDailyTIR: avgDailyTIR, // Add this
-      tirColors: tirColors, // Add this
-    };
   };
 
-  const data = await fetchData();
-  return {
-    hourlyStatsReport: data,
-  };
+  return await fetchData()
 };

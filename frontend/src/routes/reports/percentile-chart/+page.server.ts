@@ -1,5 +1,6 @@
 import type { PageServerLoad } from "./$types";
 import { apiGet } from "$lib/api";
+import { calculateTimeInRange as calculateTIR, DEFAULT_THRESHOLDS, type AnalysisConfig, type TimeInRangeMetrics } from '$lib/utils/calculate/time-in-range.ts';
 
 interface GlucoseEntry {
   _id: string;
@@ -65,18 +66,7 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
     }
 
     // Process entries to calculate percentiles by hour
-    const percentiles = calculateHourlyPercentiles(entries);
-    const summaryTable = calculateSummaryTable(percentiles);
-    const overallAverageTIR = calculateTimeInRange(entries); // Using valid entries
-
-    // TIR colors for the pie chart
-    const tirColors = {
-      veryLow: "bg-red-700",
-      low: "bg-red-500",
-      target: "bg-green-500",
-      high: "bg-yellow-400",
-      veryHigh: "bg-yellow-600",
-    };
+    const percentiles = calculateHourlyPercentiles(entries);    const summaryTable = calculateSummaryTable(percentiles);    const overallAverageTIR = calculateTimeInRange(entries); // Using valid entries
 
     // Transform percentiles for AreaChart
     const percentileKeysMap: Record<string, string> = {
@@ -117,10 +107,8 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
       reportName: "Glucose Percentile Chart",
       generatedDate: new Date().toLocaleDateString(),
       percentiles, // Keep original percentiles for summary table or other uses if needed
-      areaChartData, // Add new structure for the area chart
-      summaryTable,
+      areaChartData, // Add new structure for the area chart      summaryTable,
       overallAverageTIR,
-      tirColors,
       dateRange: {
         start: startDate.toLocaleDateString(),
         end: endDate.toLocaleDateString(),
@@ -267,62 +255,59 @@ function calculatePercentile(
   } else {
     const lower = sortedArray[Math.floor(index)];
     const upper = sortedArray[Math.ceil(index)];
-    return lower + (upper - lower) * (index - Math.floor(index));
+  return lower + (upper - lower) * (index - Math.floor(index));
   }
 }
 
-// Helper function to calculate Time in Range
-function calculateTimeInRange(entries: GlucoseEntry[]) {
-  if (entries.length === 0) {
-    return { veryLow: 0, low: 0, target: 0, high: 0, veryHigh: 0 };
-  }
+/**
+ * Convert GlucoseEntry to standardized Entry format for use with calculation utilities
+ */
+function convertToEntries(glucoseEntries: GlucoseEntry[]): Array<{
+  _id: string;
+  sgv: number;
+  date: number;
+  mills: number;
+  type: string;
+  direction?: string;
+}> {
+  return glucoseEntries.map(entry => ({
+    _id: entry._id,
+    sgv: entry.sgv,
+    date: entry.date,
+    mills: entry.date,
+    type: entry.type,
+    direction: entry.direction
+  }));
+}
 
-  // Standard glucose ranges (mg/dL)
-  const ranges = {
-    veryLow: 54, // Below 54
-    low: 70, // 54-69
-    target: 180, // 70-179 (target range)
-    high: 250, // 180-249
-    veryHigh: 250, // 250+
-  };
-  const counts = {
-    veryLow: 0,
-    low: 0,
-    target: 0,
-    high: 0,
-    veryHigh: 0,
-  };
-  entries.forEach((entry) => {
-    if (entry.sgv && entry.sgv > 39 && entry.sgv < 600) {
-      // Filter out invalid readings
-      if (entry.sgv < ranges.veryLow) {
-        counts.veryLow++;
-      } else if (entry.sgv < ranges.low) {
-        counts.low++;
-      } else if (entry.sgv < ranges.target) {
-        counts.target++;
-      } else if (entry.sgv < ranges.high) {
-        counts.high++;
-      } else {
-        counts.veryHigh++;
-      }
-    }
-  });
-
-  const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
-
-  if (total === 0) {
-    return { veryLow: 0, low: 0, target: 0, high: 0, veryHigh: 0 };
-  }
-
-  // Convert to percentages
+/**
+ * Convert time in range metrics to legacy format for backward compatibility
+ */
+function convertTimeInRangeToLegacyFormat(tirMetrics: TimeInRangeMetrics): { severeLow: number; low: number; target: number; high: number; severeHigh: number } {
   return {
-    veryLow: Math.round((counts.veryLow / total) * 100),
-    low: Math.round((counts.low / total) * 100),
-    target: Math.round((counts.target / total) * 100),
-    high: Math.round((counts.high / total) * 100),
-    veryHigh: Math.round((counts.veryHigh / total) * 100),
+    severeLow: Math.round(tirMetrics.percentages.severeLow),
+    low: Math.round(tirMetrics.percentages.low),
+    target: Math.round(tirMetrics.percentages.target),
+    high: Math.round(tirMetrics.percentages.high),
+    severeHigh: Math.round(tirMetrics.percentages.severeHigh)
   };
+}
+
+// Helper function to calculate Time in Range using calculation utilities
+function calculateTimeInRange(entries: GlucoseEntry[]): { severeLow: number; low: number; target: number; high: number; severeHigh: number } {
+  if (entries.length === 0) {
+    return { severeLow: 0, low: 0, target: 0, high: 0, severeHigh: 0 };
+  }
+
+  // Convert to Entry format and use standardized calculation
+  const standardEntries = convertToEntries(entries);
+  const tirConfig: AnalysisConfig = {
+    thresholds: DEFAULT_THRESHOLDS,
+    sensorType: 'GENERIC_5MIN'
+  };
+
+  const tirMetrics = calculateTIR(standardEntries, tirConfig);
+  return convertTimeInRangeToLegacyFormat(tirMetrics);
 }
 
 // Helper function to calculate summary table from percentiles
@@ -391,31 +376,20 @@ function generateMockData() {
       p90: percentileData["90th"][index].value,
     };
   });
-
   // Mock TIR data
   const overallAverageTIR = {
-    veryLow: 5,
+    severeLow: 5,
     low: 10,
     target: 70,
     high: 10,
-    veryHigh: 5,
-  };
-
-  const tirColors = {
-    veryLow: "bg-red-700",
-    low: "bg-red-500",
-    target: "bg-green-500",
-    high: "bg-yellow-400",
-    veryHigh: "bg-yellow-600",
+    severeHigh: 5,
   };
   return {
     reportName: "Glucose Percentile Chart",
     generatedDate: new Date().toLocaleDateString(),
     percentiles: percentileData,
     areaChartData,
-    summaryTable: summaryTable,
-    overallAverageTIR: overallAverageTIR,
-    tirColors: tirColors,
+    summaryTable: summaryTable,    overallAverageTIR: overallAverageTIR,
     dateRange: {
       start: new Date(
         Date.now() - 30 * 24 * 60 * 60 * 1000

@@ -21,11 +21,9 @@
   import TIRPieChart from "$lib/components/charts/TIRPieChart.svelte";
 
   let { data } = $props();
-  const reportDetails = $derived(data.distributionReport);
-  const distributionPoints = $derived(reportDetails?.distributionData || []);
-  const summary = $derived(reportDetails?.summaryMetrics); // Original summary for cards
-  const tirPieDataFromServer = $derived(reportDetails?.tirForPieChart); // New data for pie
-  const tirPieColors = $derived(reportDetails?.tirColors);
+  const distributionPoints = $derived(data?.distributionData || []);
+  const tirPieDataFromServer = $derived(data?.tirForPieChart); // New data for pie
+  const tirPieColors = $derived(data?.tirColors);
 
   // Transform distribution data into scatterplot data
   const scatterplotData = $derived.by(() => {
@@ -61,8 +59,8 @@
       ? [
           {
             name: "Very Low (<54)",
-            value: tirPieDataFromServer.veryLow,
-            color: tirPieColors.veryLow,
+            value: tirPieDataFromServer.severeLow,
+            color: tirPieColors.severeLow,
           },
           {
             name: "Low (54-69)",
@@ -81,8 +79,8 @@
           },
           {
             name: "Very High (>250)",
-            value: tirPieDataFromServer.veryHigh,
-            color: tirPieColors.veryHigh,
+            value: tirPieDataFromServer.severeHigh,
+            color: tirPieColors.severeHigh,
           },
         ].filter((segment) => segment.value > 0)
       : []
@@ -91,63 +89,67 @@
 </script>
 
 <div class="p-4 md:p-6 bg-gray-100 min-h-screen">
-  {#if reportDetails}
+  {#if data}
     <header class="mb-6">
       <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-1">
-        {reportDetails.reportName}
+        {data.reportName}
       </h1>
       <p class="text-xs md:text-sm text-gray-600">
-        Generated on: {reportDetails.generatedDate}
+        Generated on: {data.generatedDate}
       </p>
     </header>
 
     <!-- Summary Cards and TIR Pie Chart in a grid -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
       <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
-        {#if summary}
-          <Card>
-            <CardHeader>
-              <CardTitle>Target Range</CardTitle><CardDescription>
-                70-180 mg/dL
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p class="text-3xl font-bold">
-                {summary.percentTarget.toFixed(1)}%
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Below Target</CardTitle><CardDescription>
-                &lt;70 mg/dL
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p class="text-3xl font-bold">
-                {(summary.percentVeryLow + summary.percentLow).toFixed(1)}%
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Above Target</CardTitle><CardDescription>
-                &gt;180 mg/dL
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p class="text-3xl font-bold">
-                {(summary.percentHigh + summary.percentVeryHigh).toFixed(1)}%
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle>Total Readings</CardTitle></CardHeader>
-            <CardContent>
-              <p class="text-3xl font-bold">{summary.totalReadings}</p>
-            </CardContent>
-          </Card>
-        {/if}
+        <Card>
+          <CardHeader>
+            <CardTitle>Target Range</CardTitle><CardDescription>
+              70-180 mg/dL
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p class="text-3xl font-bold">
+              {data.tirMetrics?.percentages.target}%
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Below Target</CardTitle><CardDescription>
+              &lt;70 mg/dL
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p class="text-3xl font-bold">
+              {(
+                (data.tirMetrics?.percentages.severeLow || 0) +
+                (data?.tirMetrics?.percentages?.low || 0)
+              ).toFixed(1)}%
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Above Target</CardTitle><CardDescription>
+              &gt;180 mg/dL
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p class="text-3xl font-bold">
+              {(
+                (data.tirMetrics?.percentages.severeHigh || 0) +
+                (data?.tirMetrics?.percentages?.high || 0)
+              ).toFixed(1)}%
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Total Readings</CardTitle></CardHeader>
+          <CardContent>
+            <p class="text-3xl font-bold">{data.totalReadings}</p>
+          </CardContent>
+        </Card>
       </div>
       <div class="lg:col-span-1">
         <Card>

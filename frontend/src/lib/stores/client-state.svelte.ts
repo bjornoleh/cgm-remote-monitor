@@ -134,7 +134,7 @@ export function formatTime(time: Date, timeFormat: number, compact = false): str
 		options.minute = 'numeric';
 	}
 
-	return time.toLocaleTimeString('en-US', options);
+	return time.toLocaleTimeString(undefined, options);
 }
 
 export function getDirectionInfo(direction?: string) {
