@@ -43,6 +43,10 @@
   --target-bg: oklch(0.6 0.118 184.704);
   --high-bg: #7928ca;
   --severe-high-bg: #ff0080;
+
+  --iob-basal: oklch(0.646 0.222 41.116);
+  --iob-bolus: oklch(0.769 0.188 70.08);
+  --iob-temporary: oklch(0.6 0.118 184.704);
 }
 
 .dark {
@@ -121,7 +125,7 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-/* Layerchart specific */
+  /* Layerchart specific */
   --color-surface-content: var(--card-foreground);
   --color-surface-100: var(--card-background);
   --color-surface-200: var(--card-muted);
@@ -132,6 +136,10 @@
   --color-target-bg: var(--target-bg);
   --color-high-bg: var(--high-bg);
   --color-severe-high-bg: var(--severe-high-bg);
+
+  --color-iob-basal: oklch(0.646 0.222 41.116);
+  --color-iob-bolus: oklch(0.769 0.188 70.08);
+  --color-iob-temporary: oklch(0.6 0.118 184.704);
 }
 
 @layer base {

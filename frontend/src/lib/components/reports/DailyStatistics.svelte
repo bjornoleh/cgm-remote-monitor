@@ -1,19 +1,24 @@
 <script lang="ts">
   import type { Thresholds, DayToDayDailyData } from "./types";
+  import { getGlucoseColor } from "$lib/utils/glucose-analytics";
 
   interface Props {
     dayData: DayToDayDailyData;
     thresholds: Thresholds;
-    getGlucoseColor: (value: number) => string;
   }
 
-  let { dayData, thresholds, getGlucoseColor }: Props = $props();
+  let { dayData, thresholds }: Props = $props();
 </script>
 
 <div class="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
   <div class="bg-gray-50 p-3 rounded">
     <div class="text-gray-600 text-xs">Average</div>
-    <div class="font-semibold {getGlucoseColor(dayData.averageGlucose)}">
+    <div
+      class="font-semibold {getGlucoseColor(
+        dayData.averageGlucose,
+        thresholds
+      )}"
+    >
       {dayData.averageGlucose} mg/dL
     </div>
   </div>

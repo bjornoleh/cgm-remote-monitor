@@ -1,7 +1,8 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { page } from "$app/stores";
+  import { page } from "$app/state";
   import TreatmentEditModal from "$lib/components/TreatmentEditModal.svelte";
+  import TreatmentsTable from "$lib/components/TreatmentsTable.svelte";
   import {
     deleteTreatment,
     updateTreatment,
@@ -11,6 +12,8 @@
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
+  import * as Card from "$lib/components/ui/card";
+  import * as Alert from "$lib/components/ui/alert";
 
   interface TreatmentReportData {
     treatments: Treatment[];
@@ -47,8 +50,8 @@
 
   // Initialize date inputs with current URL parameters or defaults
   $effect(() => {
-    const urlFrom = $page.url.searchParams.get("from");
-    const urlTo = $page.url.searchParams.get("to");
+    const urlFrom = page.url.searchParams.get("from");
+    const urlTo = page.url.searchParams.get("to");
 
     if (urlFrom) {
       fromDate = urlFrom;
@@ -102,7 +105,7 @@
   function updateDateRange() {
     if (!fromDate || !toDate) return;
 
-    const params = new URLSearchParams($page.url.searchParams);
+    const params = new URLSearchParams(page.url.searchParams);
     params.set("from", fromDate);
     params.set("to", toDate);
     goto(`?${params.toString()}`);
@@ -201,14 +204,6 @@
     return date.toLocaleDateString() + " " + date.toLocaleTimeString();
   }
 
-  function formatBloodGlucose(treatment: Treatment): string {
-    if (treatment.glucose) {
-      const unit = treatment.glucoseType === "Finger" ? "mg/dL" : "mg/dL";
-      return `${treatment.glucose} ${unit}`;
-    }
-    return "-";
-  }
-
   function formatInsulin(treatment: Treatment): string {
     if (treatment.insulin) {
       return `${treatment.insulin}U`;
@@ -234,54 +229,6 @@
     return parts.length > 0 ? parts.join(", ") : "-";
   }
 
-  function formatProtein(treatment: Treatment): string {
-    return treatment.protein ? `${treatment.protein}g` : "-";
-  }
-
-  function formatFat(treatment: Treatment): string {
-    return treatment.fat ? `${treatment.fat}g` : "-";
-  }
-
-  function formatDuration(treatment: Treatment): string {
-    return treatment.duration ? `${treatment.duration}min` : "-";
-  }
-
-  function formatPercent(treatment: Treatment): string {
-    return treatment.percent ? `${treatment.percent}%` : "-";
-  }
-
-  function formatBasalValue(treatment: Treatment): string {
-    if (treatment.absolute !== undefined) {
-      return `${treatment.absolute}U/h`;
-    }
-    if (treatment.rate !== undefined) {
-      return `${treatment.rate}U/h`;
-    }
-    return "-";
-  }
-
-  function formatProfile(treatment: Treatment): string {
-    return treatment.profile || "-";
-  }
-
-  function formatEnteredBy(treatment: Treatment): string {
-    return treatment.enteredBy || "-";
-  }
-
-  function formatNotes(treatment: Treatment): string {
-    const parts: string[] = [];
-
-    if (treatment.notes) {
-      parts.push(treatment.notes);
-    }
-
-    if (treatment.reason) {
-      parts.push(`Reason: ${treatment.reason}`);
-    }
-
-    return parts.join(" | ") || "-";
-  }
-
   // Event type filter handling
   function toggleEventType(eventType: string) {
     if (selectedEventTypes.includes(eventType)) {
@@ -297,33 +244,7 @@
   }
 </script>
 
-<svelte:head>
-  <title>Treatments Report - Nightscout</title>
-  <meta
-    name="description"
-    content="View and manage all Nightscout treatments"
-  />
-</svelte:head>
-
-<div class="container mx-auto px-4 py-6 space-y-6">
-  <!-- Header -->
-  <div class="flex items-center justify-between">
-    <div>
-      <h1 class="text-3xl font-bold">Treatments Report</h1>
-      <p class="text-muted-foreground mt-1">
-        View and manage all treatments from {data.data.dateRange.from.toLocaleDateString()}
-        to {data.data.dateRange.to.toLocaleDateString()}
-      </p>
-    </div>
-
-    <a
-      href="/reports"
-      class="bg-secondary text-secondary-foreground px-4 py-2 rounded-lg hover:bg-secondary/80 transition-colors"
-    >
-      ← Back to Reports
-    </a>
-  </div>
-
+<div class="space-y-6">
   <!-- Status Messages -->
   {#if statusMessage}
     <div
@@ -348,6 +269,14 @@
           ✕
         </button>
       </div>
+    </div>
+  {/if}
+
+  <!-- Show date range info -->
+  {#if data.success}
+    <div class="text-center text-sm text-muted-foreground mb-6">
+      Showing treatments from {data.data.dateRange.from.toLocaleDateString()}
+      to {data.data.dateRange.to.toLocaleDateString()}
     </div>
   {/if}
 
@@ -441,116 +370,13 @@
         </div>
       {/if}
     </div>
-
     <!-- Treatments Table -->
     <div class="bg-card border border-border rounded-lg overflow-hidden">
-      {#if filteredTreatments.length === 0}
-        <div class="text-center py-12">
-          <div class="text-muted-foreground text-4xl mb-4">📋</div>
-          <h3 class="text-lg font-semibold mb-2">No Treatments Found</h3>
-          <p class="text-muted-foreground">
-            {data.data.treatments.length === 0
-              ? "No treatments found for the selected date range."
-              : "No treatments match your current filters."}
-          </p>
-        </div>
-      {:else}
-        <div class="overflow-x-auto">
-          <table class="w-full">
-            <thead class="bg-muted">
-              <tr>
-                <th class="px-4 py-3 text-left text-sm font-medium">Time</th>
-                <th class="px-4 py-3 text-left text-sm font-medium">
-                  Event Type
-                </th>
-                <th class="px-4 py-3 text-left text-sm font-medium">
-                  Blood Glucose
-                </th>
-                <th class="px-4 py-3 text-left text-sm font-medium">Insulin</th>
-                <th class="px-4 py-3 text-left text-sm font-medium">
-                  Carbs/Food/Time
-                </th>
-                <th class="px-4 py-3 text-left text-sm font-medium">Protein</th>
-                <th class="px-4 py-3 text-left text-sm font-medium">Fat</th>
-                <th class="px-4 py-3 text-left text-sm font-medium">
-                  Duration
-                </th>
-                <th class="px-4 py-3 text-left text-sm font-medium">Percent</th>
-                <th class="px-4 py-3 text-left text-sm font-medium">
-                  Basal Value
-                </th>
-                <th class="px-4 py-3 text-left text-sm font-medium">Profile</th>
-                <th class="px-4 py-3 text-left text-sm font-medium">
-                  Entered By
-                </th>
-                <th class="px-4 py-3 text-left text-sm font-medium">Notes</th>
-                <th class="px-4 py-3 text-left text-sm font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each filteredTreatments as treatment (treatment._id)}
-                <tr class="border-t border-border hover:bg-muted/50">
-                  <td class="px-4 py-3 text-sm">
-                    {formatDate(treatment.created_at)}
-                  </td>
-                  <td class="px-4 py-3 text-sm">
-                    <span
-                      class="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary border border-primary/20"
-                    >
-                      {treatment.eventType || "-"}
-                    </span>
-                  </td>
-                  <td class="px-4 py-3 text-sm">
-                    {formatBloodGlucose(treatment)}
-                  </td>
-                  <td class="px-4 py-3 text-sm">{formatInsulin(treatment)}</td>
-                  <td
-                    class="px-4 py-3 text-sm max-w-48 truncate"
-                    title={formatCarbs(treatment)}
-                  >
-                    {formatCarbs(treatment)}
-                  </td>
-                  <td class="px-4 py-3 text-sm">{formatProtein(treatment)}</td>
-                  <td class="px-4 py-3 text-sm">{formatFat(treatment)}</td>
-                  <td class="px-4 py-3 text-sm">{formatDuration(treatment)}</td>
-                  <td class="px-4 py-3 text-sm">{formatPercent(treatment)}</td>
-                  <td class="px-4 py-3 text-sm">
-                    {formatBasalValue(treatment)}
-                  </td>
-                  <td class="px-4 py-3 text-sm">{formatProfile(treatment)}</td>
-                  <td class="px-4 py-3 text-sm">
-                    {formatEnteredBy(treatment)}
-                  </td>
-                  <td
-                    class="px-4 py-3 text-sm max-w-64 truncate"
-                    title={formatNotes(treatment)}
-                  >
-                    {formatNotes(treatment)}
-                  </td>
-                  <td class="px-4 py-3 text-sm">
-                    <div class="flex gap-2">
-                      <button
-                        onclick={() => editTreatment(treatment)}
-                        class="text-primary hover:text-primary/80 text-sm"
-                        title="Edit treatment"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        onclick={() => confirmDelete(treatment)}
-                        class="text-destructive hover:text-destructive/80 text-sm"
-                        title="Delete treatment"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
-      {/if}
+      <TreatmentsTable
+        treatments={filteredTreatments}
+        onEdit={editTreatment}
+        onDelete={confirmDelete}
+      />
     </div>
 
     <!-- Summary Stats -->
@@ -603,58 +429,67 @@
   <div
     class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
   >
-    <div class="bg-background border border-border rounded-lg max-w-md w-full">
-      <div class="p-6">
-        <h3 class="text-lg font-semibold mb-3">Delete Treatment</h3>
-        <p class="text-muted-foreground mb-4">
+    <Card.Root class="max-w-md w-full">
+      <Card.Header>
+        <Card.Title>Delete Treatment</Card.Title>
+        <Card.Description>
           Are you sure you want to delete this {treatmentToDelete.eventType} treatment?
           This action cannot be undone.
-        </p>
+        </Card.Description>
+      </Card.Header>
 
-        <div class="bg-muted p-3 rounded-lg mb-4 text-sm">
-          <div>
-            <strong>Time:</strong>
-            {formatDate(treatmentToDelete.created_at)}
-          </div>
-          <div>
-            <strong>Type:</strong>
-            {treatmentToDelete.eventType}
-          </div>
-          {#if treatmentToDelete.insulin}
-            <div>
-              <strong>Insulin:</strong>
-              {formatInsulin(treatmentToDelete)}
+      <Card.Content>
+        <Alert.Root>
+          <Alert.Title>Treatment Details</Alert.Title>
+          <Alert.Description>
+            <div class="space-y-1 text-sm">
+              <div>
+                <strong>Time:</strong>
+                {formatDate(treatmentToDelete.created_at)}
+              </div>
+              <div>
+                <strong>Type:</strong>
+                {treatmentToDelete.eventType}
+              </div>
+              {#if treatmentToDelete.insulin}
+                <div>
+                  <strong>Insulin:</strong>
+                  {formatInsulin(treatmentToDelete)}
+                </div>
+              {/if}
+              {#if treatmentToDelete.carbs}
+                <div>
+                  <strong>Carbs:</strong>
+                  {formatCarbs(treatmentToDelete)}
+                </div>
+              {/if}
             </div>
-          {/if}
-          {#if treatmentToDelete.carbs}
-            <div>
-              <strong>Carbs:</strong>
-              {formatCarbs(treatmentToDelete)}
-            </div>
-          {/if}
-        </div>
+          </Alert.Description>
+        </Alert.Root>
+      </Card.Content>
 
-        <div class="flex gap-3">
-          <button
-            onclick={() => {
-              showDeleteConfirm = false;
-              treatmentToDelete = null;
-            }}
-            class="flex-1 bg-secondary text-secondary-foreground py-2 rounded-lg hover:bg-secondary/80 transition-colors"
-            disabled={isLoading}
-          >
-            Cancel
-          </button>
-          <button
-            onclick={handleDeleteTreatment}
-            class="flex-1 bg-destructive text-destructive-foreground py-2 rounded-lg hover:bg-destructive/90 transition-colors"
-            disabled={isLoading}
-          >
-            {isLoading ? "Deleting..." : "Delete"}
-          </button>
-        </div>
-      </div>
-    </div>
+      <Card.Footer class="flex gap-3">
+        <Button
+          variant="secondary"
+          class="flex-1"
+          onclick={() => {
+            showDeleteConfirm = false;
+            treatmentToDelete = null;
+          }}
+          disabled={isLoading}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="destructive"
+          class="flex-1"
+          onclick={handleDeleteTreatment}
+          disabled={isLoading}
+        >
+          {isLoading ? "Deleting..." : "Delete"}
+        </Button>
+      </Card.Footer>
+    </Card.Root>
   </div>
 {/if}
 

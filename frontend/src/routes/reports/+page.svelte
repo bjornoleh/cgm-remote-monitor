@@ -55,7 +55,7 @@
         "Variability analysis",
         "Weekly patterns",
       ],
-      status: "coming-soon",
+      status: "available",
     },
     {
       title: "Distribution Report",
@@ -238,10 +238,16 @@
         📊 View Hourly Patterns
       </a>
       <a
-        href="/reports/treatments"
+        href="/reports/day-to-day"
+        class="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors text-sm"
+      >
+        📅 Day-to-Day Analysis
+      </a>
+      <a
+        href="/reports/showcase"
         class="bg-secondary text-secondary-foreground px-4 py-2 rounded-lg hover:bg-secondary/80 transition-colors text-sm"
       >
-        💉 Manage Treatments
+        🎨 View Chart Showcase
       </a>
       <a
         href="/"

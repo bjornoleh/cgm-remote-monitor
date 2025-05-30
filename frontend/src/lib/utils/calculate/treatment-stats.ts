@@ -7,21 +7,18 @@
 import type { TimeInRangeMetrics } from './time-in-range';
 
 export interface TreatmentSummary {
-  totalInsulin: number;
-  totalCarbs: number;
-  totalProtein: number;
-  totalFat: number;
-  bolusInsulin: number;
-  basalInsulin: number;
+  totals: {
+    food: {
+      carbs: number;
+      protein: number;
+      fat: number;
+    };
+    insulin: {
+      bolus: number;
+      basal: number;
+    };
+  };
   treatmentCount: number;
-}
-
-export interface InsulinBreakdown {
-  bolus: number;
-  basal: number;
-  total: number;
-  bolusPercentage: number;
-  basalPercentage: number;
 }
 
 export interface OverallAverages {
@@ -101,31 +98,20 @@ export function isBolusTreatment(treatment: Treatment): boolean {
 }
 
 /**
- * Calculates daily insulin breakdown for a single day
- * Based on existing patterns in +page.svelte getDailyInsulinBreakdown function
- * Creates a defensive copy to avoid modifying input data
+ * Utility functions to calculate values from TreatmentSummary
  */
-export function calculateDailyInsulinBreakdown(dayData: DayData): InsulinBreakdown {
-  // Create defensive copy to avoid modifying input data
-  const treatmentsCopy = [...dayData.treatments];
+export function getTotalInsulin(treatmentSummary: TreatmentSummary): number {
+  return treatmentSummary.totals.insulin.bolus + treatmentSummary.totals.insulin.basal;
+}
 
-  const bolusInsulin = treatmentsCopy
-    .filter(isBolusTreatment)
-    .reduce((sum, treatment) => sum + (treatment.insulin || 0), 0);
+export function getBolusPercentage(treatmentSummary: TreatmentSummary): number {
+  const total = getTotalInsulin(treatmentSummary);
+  return total > 0 ? (treatmentSummary.totals.insulin.bolus / total) * 100 : 0;
+}
 
-  const totalDailyInsulin = dayData.treatmentSummary.totalInsulin;
-  const basalInsulin = Math.max(0, totalDailyInsulin - bolusInsulin);
-
-  const bolusPercentage = totalDailyInsulin > 0 ? (bolusInsulin / totalDailyInsulin) * 100 : 0;
-  const basalPercentage = totalDailyInsulin > 0 ? (basalInsulin / totalDailyInsulin) * 100 : 0;
-
-  return {
-    bolus: bolusInsulin,
-    basal: basalInsulin,
-    total: totalDailyInsulin,
-    bolusPercentage,
-    basalPercentage,
-  };
+export function getBasalPercentage(treatmentSummary: TreatmentSummary): number {
+  const total = getTotalInsulin(treatmentSummary);
+  return total > 0 ? (treatmentSummary.totals.insulin.basal / total) * 100 : 0;
 }
 
 /**
@@ -133,12 +119,17 @@ export function calculateDailyInsulinBreakdown(dayData: DayData): InsulinBreakdo
  */
 export function calculateTreatmentSummary(treatments: Treatment[]): TreatmentSummary {
   const summary: TreatmentSummary = {
-    totalInsulin: 0,
-    totalCarbs: 0,
-    totalProtein: 0,
-    totalFat: 0,
-    bolusInsulin: 0,
-    basalInsulin: 0,
+    totals: {
+      food: {
+        carbs: 0,
+        protein: 0,
+        fat: 0,
+      },
+      insulin: {
+        bolus: 0,
+        basal: 0,
+      },
+    },
     treatmentCount: 0,
   };
 
@@ -150,21 +141,18 @@ export function calculateTreatmentSummary(treatments: Treatment[]): TreatmentSum
 
     // Aggregate insulin
     if (treatment.insulin) {
-      summary.totalInsulin += treatment.insulin;
-
       if (isBolusTreatment(treatment)) {
-        summary.bolusInsulin += treatment.insulin;
+        summary.totals.insulin.bolus += treatment.insulin;
+      } else {
+        summary.totals.insulin.basal += treatment.insulin;
       }
     }
 
     // Aggregate macronutrients
-    if (treatment.carbs) summary.totalCarbs += treatment.carbs;
-    if (treatment.protein) summary.totalProtein += treatment.protein;
-    if (treatment.fat) summary.totalFat += treatment.fat;
+    if (treatment.carbs) summary.totals.food.carbs += treatment.carbs;
+    if (treatment.protein) summary.totals.food.protein += treatment.protein;
+    if (treatment.fat) summary.totals.food.fat += treatment.fat;
   });
-
-  // Calculate basal insulin as remainder
-  summary.basalInsulin = Math.max(0, summary.totalInsulin - summary.bolusInsulin);
 
   return summary;
 }
@@ -174,18 +162,20 @@ export function calculateTreatmentSummary(treatments: Treatment[]): TreatmentSum
  */
 export function calculateOverallAverages(dailyDataPoints: DayData[]): OverallAverages | null {
   if (dailyDataPoints.length === 0) return null;
+
   const totals = dailyDataPoints.reduce(
     (acc, day) => {
-      const insulinBreakdown = calculateDailyInsulinBreakdown(day);
-      const totalDailyInsulin = day.treatmentSummary.totalInsulin;
+      const totalDailyInsulin = getTotalInsulin(day.treatmentSummary);
+      const bolusInsulin = day.treatmentSummary.totals.insulin.bolus;
+      const basalInsulin = day.treatmentSummary.totals.insulin.basal;
 
       return {
         totalDailyInsulin: acc.totalDailyInsulin + totalDailyInsulin,
-        bolusInsulin: acc.bolusInsulin + insulinBreakdown.bolus,
-        basalInsulin: acc.basalInsulin + insulinBreakdown.basal,
-        totalCarbs: acc.totalCarbs + day.treatmentSummary.totalCarbs,
-        totalProtein: acc.totalProtein + day.treatmentSummary.totalProtein,
-        totalFat: acc.totalFat + day.treatmentSummary.totalFat,
+        bolusInsulin: acc.bolusInsulin + bolusInsulin,
+        basalInsulin: acc.basalInsulin + basalInsulin,
+        totalCarbs: acc.totalCarbs + day.treatmentSummary.totals.food.carbs,
+        totalProtein: acc.totalProtein + day.treatmentSummary.totals.food.protein,
+        totalFat: acc.totalFat + day.treatmentSummary.totals.food.fat,
         timeInRange: acc.timeInRange + day.timeInRanges.percentages.target,
         tightTimeInRange: acc.tightTimeInRange + (day.timeInRanges.percentages.target > 85 ? day.timeInRanges.percentages.target : 0),
         daysWithData: acc.daysWithData + (totalDailyInsulin > 0 ? 1 : 0),
@@ -289,4 +279,43 @@ export function cleanTreatmentData(treatments: Treatment[]): Treatment[] {
       protein: treatment.protein ? Number(treatment.protein) : undefined,
       fat: treatment.fat ? Number(treatment.fat) : undefined,
     }));
+}
+
+/**
+ * Legacy treatment summary structure from server
+ */
+export interface LegacyTreatmentSummary {
+  totalInsulin: number;
+  totalCarbs: number;
+  totalProtein: number;
+  totalFat: number;
+  bolusCount: number;
+  mealEvents: number;
+  bolusInsulin?: number;
+  basalInsulin?: number;
+  treatmentCount?: number;
+}
+
+/**
+ * Converts legacy treatment summary to new structured format
+ */
+export function convertLegacyTreatmentSummary(legacy: LegacyTreatmentSummary): TreatmentSummary {
+  // Calculate bolus and basal if not provided
+  const bolusInsulin = legacy.bolusInsulin ?? 0;
+  const basalInsulin = legacy.basalInsulin ?? Math.max(0, legacy.totalInsulin - bolusInsulin);
+
+  return {
+    totals: {
+      food: {
+        carbs: legacy.totalCarbs,
+        protein: legacy.totalProtein,
+        fat: legacy.totalFat,
+      },
+      insulin: {
+        bolus: bolusInsulin,
+        basal: basalInsulin,
+      },
+    },
+    treatmentCount: legacy.treatmentCount ?? (legacy.bolusCount + legacy.mealEvents),
+  };
 }

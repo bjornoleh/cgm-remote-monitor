@@ -1,7 +1,5 @@
 <script lang="ts">
   import type { PageData } from "./$types";
-  import { goto } from "$app/navigation";
-  import { page } from "$app/stores";
   import {
     Table,
     TableBody,
@@ -10,41 +8,16 @@
     TableHeader,
     TableRow,
   } from "$lib/components/ui/table";
-  import DateRangePicker from "$lib/components/ui/date-range-picker.svelte";
-  import HourlyGlucoseBoxChart from "$lib/components/reports/HourlyGlucoseBoxChart.svelte";
+  import * as Card from "$lib/components/ui/card";
   import HourlyIOBChart from "$lib/components/reports/HourlyIOBChart.svelte";
-
   let {
     data,
   }: {
     data: PageData;
   } = $props();
-
   const reportData = $derived(data.success ? data.data : null);
   const hourlyStats = $derived(reportData?.hourlyStats || []);
-  const boxPlotData = $derived(reportData?.boxPlotData || []);
   const dateRange = $derived(reportData?.dateRange);
-
-  // Date selection using DateRangePicker
-  const handleDateChange = (params: {
-    from?: string;
-    to?: string;
-    days?: number;
-  }) => {
-    const url = new URL($page.url);
-
-    if (params.from && params.to) {
-      url.searchParams.set("from", params.from);
-      url.searchParams.set("to", params.to);
-      url.searchParams.delete("days");
-    } else if (params.days) {
-      url.searchParams.set("days", params.days.toString());
-      url.searchParams.delete("from");
-      url.searchParams.delete("to");
-    }
-
-    goto(url.toString());
-  };
 
   // Format hour for display (24-hour to 12-hour format)
   function formatHour(hour: number): string {
@@ -102,108 +75,105 @@
   });
 </script>
 
-<div class="space-y-6">
-  <!-- Header -->
-  <div class="flex flex-col gap-4">
-    <h1 class="text-3xl font-bold">Hourly Statistics Report</h1>
-
-    <!-- Date Range Picker -->
-    <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-      <DateRangePicker onDateChange={handleDateChange} />
-
-      {#if dateRange}
-        <div class="text-sm text-muted-foreground">
-          {dateRange.from.toLocaleDateString()} - {dateRange.to.toLocaleDateString()}
-        </div>
-      {/if}
-    </div>
-  </div>
-
-  <!-- Error State -->
-  {#if !data.success}
-    <div
-      class="bg-destructive/10 border border-destructive text-destructive p-4 rounded-lg"
-    >
-      <h3 class="font-semibold">Error loading data</h3>
-      <p>{data.error || "Unknown error occurred"}</p>
-    </div>
-  {:else if hourlyStats.length === 0}
-    <div
-      class="bg-muted/50 border border-muted text-muted-foreground p-4 rounded-lg"
-    >
-      <h3 class="font-semibold">No data available</h3>
-      <p>No glucose readings found for the selected date range.</p>
-    </div>
-  {:else}
-    <!-- Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="bg-card text-card-foreground p-4 rounded-lg border">
-        <h3 class="text-sm font-medium text-muted-foreground">
-          Total Readings
-        </h3>
+<!-- Error State -->
+{#if !data.success}
+  <Card.Root class="border-destructive bg-destructive/10">
+    <Card.Content class="pt-6 text-destructive">
+      <Card.Title class="text-destructive">Error loading data</Card.Title>
+      <Card.Description class="text-destructive/80">
+        {data.error || "Unknown error occurred"}
+      </Card.Description>
+    </Card.Content>
+  </Card.Root>
+{:else if hourlyStats.length === 0}
+  <Card.Root class="border-muted bg-muted/50">
+    <Card.Content class="pt-6 text-muted-foreground">
+      <Card.Title class="text-muted-foreground">No data available</Card.Title>
+      <Card.Description>
+        No glucose readings found for the selected date range.
+      </Card.Description>
+    </Card.Content>
+  </Card.Root>
+{:else}<!-- Summary Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <Card.Root>
+      <Card.Content class="pt-6">
+        <Card.Description>Total Readings</Card.Description>
         <p class="text-2xl font-bold">
           {summaryStats.totalReadings.toLocaleString()}
         </p>
-      </div>
+      </Card.Content>
+    </Card.Root>
 
-      <div class="bg-card text-card-foreground p-4 rounded-lg border">
-        <h3 class="text-sm font-medium text-muted-foreground">
-          Overall Average
-        </h3>
+    <Card.Root>
+      <Card.Content class="pt-6">
+        <Card.Description>Overall Average</Card.Description>
         <p class="text-2xl font-bold">{summaryStats.overallAverage} mg/dL</p>
-      </div>
+      </Card.Content>
+    </Card.Root>
 
-      {#if summaryStats.highestHour}
-        <div class="bg-card text-card-foreground p-4 rounded-lg border">
-          <h3 class="text-sm font-medium text-muted-foreground">
-            Highest Hour
-          </h3>
+    {#if summaryStats.highestHour}
+      <Card.Root>
+        <Card.Content class="pt-6">
+          <Card.Description>Highest Hour</Card.Description>
           <p class="text-2xl font-bold">
             {formatHour(summaryStats.highestHour.hour)}
           </p>
           <p class="text-sm text-muted-foreground">
             {formatNumber(summaryStats.highestHour.average)} mg/dL avg
           </p>
-        </div>
-      {/if}
+        </Card.Content>
+      </Card.Root>
+    {/if}
 
-      {#if summaryStats.lowestHour}
-        <div class="bg-card text-card-foreground p-4 rounded-lg border">
-          <h3 class="text-sm font-medium text-muted-foreground">Lowest Hour</h3>
+    {#if summaryStats.lowestHour}
+      <Card.Root>
+        <Card.Content class="pt-6">
+          <Card.Description>Lowest Hour</Card.Description>
           <p class="text-2xl font-bold">
             {formatHour(summaryStats.lowestHour.hour)}
           </p>
           <p class="text-sm text-muted-foreground">
             {formatNumber(summaryStats.lowestHour.average)} mg/dL avg
           </p>
-        </div>
-      {/if}
-    </div>
-
-    <!-- Charts Section -->
-    <div class="space-y-6">
-      <!-- Glucose Box Chart -->
-      <div class="bg-card text-card-foreground p-6 rounded-lg border">
-        <h2 class="text-xl font-semibold mb-4">Hourly Glucose Distribution</h2>
+        </Card.Content>
+      </Card.Root>
+    {/if}
+  </div>
+  <!-- Charts Section -->
+  <div class="space-y-6">
+    <!-- Glucose Box Chart -->
+    <Card.Root>
+      <Card.Header>
+        <Card.Title>Hourly Glucose Distribution</Card.Title>
+      </Card.Header>
+      <Card.Content>
         <!-- <HourlyGlucoseBoxChart {boxPlotData} /> -->
-      </div>
-
-      <!-- IOB Chart -->
-      <div class="bg-card text-card-foreground p-6 rounded-lg border">
-        <h2 class="text-xl font-semibold mb-4">Hourly Insulin-on-Board</h2>
-        <HourlyIOBChart {hourlyStats} />
-      </div>
-    </div>
-
-    <!-- Statistics Table -->
-    <div class="bg-card text-card-foreground rounded-lg border">
-      <div class="p-6 border-b">
-        <h2 class="text-xl font-semibold">Hourly Statistics</h2>
-        <p class="text-sm text-muted-foreground mt-1">
-          Detailed breakdown of glucose readings and insulin activity by hour
+        <p class="text-sm text-muted-foreground">
+          Chart component will be available soon
         </p>
-      </div>
+      </Card.Content>
+    </Card.Root>
 
+    <!-- IOB Chart -->
+    <Card.Root>
+      <Card.Header>
+        <Card.Title>Hourly Insulin-on-Board</Card.Title>
+      </Card.Header>
+      <Card.Content>
+        <HourlyIOBChart {hourlyStats} />
+      </Card.Content>
+    </Card.Root>
+  </div>
+  <!-- Statistics Table -->
+  <Card.Root>
+    <Card.Header>
+      <Card.Title>Hourly Statistics</Card.Title>
+      <Card.Description>
+        Detailed breakdown of glucose readings and insulin activity by hour
+      </Card.Description>
+    </Card.Header>
+    <Card.Content class="p-0">
       <div class="overflow-x-auto">
         <Table>
           <TableHeader>
@@ -262,13 +232,13 @@
           </TableBody>
         </Table>
       </div>
-    </div>
-  {/if}
-</div>
+    </Card.Content>
+  </Card.Root>
+{/if}
 
-<style>
-  /* Custom styles for the hourly stats table */
-  :global(.hourly-stats-table) {
-    min-width: 1000px;
-  }
-</style>
+<!-- Date Range Display -->
+{#if dateRange}
+  <div class="text-center text-sm text-muted-foreground mt-6">
+    Showing data from {dateRange.from.toLocaleDateString()} to {dateRange.to.toLocaleDateString()}
+  </div>
+{/if}

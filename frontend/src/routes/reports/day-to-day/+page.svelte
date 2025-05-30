@@ -1,7 +1,5 @@
 <script lang="ts">
   import type { PageData } from "./$types";
-  import DateRangePicker from "$lib/components/ui/date-range-picker.svelte";
-  import { type InsulinBreakdown } from "$lib/utils/calculate/treatment-stats";
   import { getClientState } from "$lib/stores/client-state.svelte.ts";
 
   // Import new components
@@ -19,14 +17,15 @@
 
   // Access client state for thresholds
   const clientState = getClientState();
-
   // Derive thresholds with fallbacks to match existing hardcoded values
   const thresholds: Thresholds = $derived.by(() => ({
+    bgSevereLow: clientState.settings?.thresholds?.bgSevereLow || 54,
     bgLow: clientState.settings?.thresholds?.bgLow || 70,
     bgTargetBottom: clientState.settings?.thresholds?.bgTargetBottom || 70,
     bgTargetTop: clientState.settings?.thresholds?.bgTargetTop || 180,
+    bgTightTargetTop: 140, // For tight time in range calculations
     bgHigh: clientState.settings?.thresholds?.bgHigh || 180,
-    tightTargetTop: 140, // For tight time in range calculations
+    bgSevereHigh: clientState.settings?.thresholds?.bgSevereHigh || 250,
   }));
 
   // Prepare data for individual day charts
@@ -124,131 +123,81 @@
           : 0,
     };
   });
-  // Helper function to calculate daily insulin breakdown - use server data directly
-  function getDailyInsulinBreakdown(day: any): InsulinBreakdown {
-    const treatmentSummary = day.treatmentSummary;
-    const totalDailyInsulin = treatmentSummary.totalInsulin;
-    const bolusInsulin = treatmentSummary.bolusInsulin || 0;
-    const basalInsulin = treatmentSummary.basalInsulin || 0;
-
-    const bolusPercentage =
-      totalDailyInsulin > 0 ? (bolusInsulin / totalDailyInsulin) * 100 : 0;
-    const basalPercentage =
-      totalDailyInsulin > 0 ? (basalInsulin / totalDailyInsulin) * 100 : 0;
-
-    return {
-      bolus: bolusInsulin,
-      basal: basalInsulin,
-      total: totalDailyInsulin,
-      bolusPercentage,
-      basalPercentage,
-    };
-  } // Helper function to get glucose range color using dynamic thresholds
-  function getGlucoseColor(value: number): string {
-    if (value < thresholds.bgLow) return "text-red-600 font-semibold";
-    if (value > thresholds.bgHigh) return "text-orange-600 font-semibold";
-    return "text-green-600";
-  }
 </script>
 
-<div class="p-4 md:p-6 bg-gray-100 min-h-screen">
-  {#if reportDetails}
-    <header class="mb-6">
-      <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-1">
-        {reportDetails.reportName}
-      </h1>
-      <p class="text-xs md:text-sm text-gray-600">
-        Generated on: {reportDetails.generatedDate}
-      </p>
+{#if reportDetails}
+  {#if reportDetails.generatedDate}
+    <div class="text-center text-sm text-muted-foreground mb-6">
+      Generated on: {reportDetails.generatedDate}
       {#if reportDetails.dateRange}
-        <p class="text-xs md:text-sm text-gray-600">
-          Date Range: {reportDetails.dateRange.from} - {reportDetails.dateRange
-            .to}
-        </p>
+        • Date Range: {reportDetails.dateRange.from} - {reportDetails.dateRange
+          .to}
       {/if}
       {#if reportDetails.totalDays && reportDetails.totalReadings}
-        <p class="text-xs md:text-sm text-gray-600">
-          {reportDetails.totalDays} days • {reportDetails.totalReadings} total readings
-        </p>
+        • {reportDetails.totalDays} days • {reportDetails.totalReadings} total readings
       {/if}
-    </header>
-
-    <!-- Date Range Picker -->
-    <DateRangePicker
-      title="Select Date Range"
-      showDaysPresets={true}
-      defaultDays={7}
-    />
-
-    {#if reportDetails.error}
-      <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-        <h3 class="text-red-800 font-semibold">Error Loading Data</h3>
-        <p class="text-red-600">{reportDetails.error}</p>
-      </div>
-    {:else if dailyDataPoints.length > 0}
-      <!-- Individual Daily Charts -->
-      {#each dailyChartData as dayData (dayData.date)}
-        <div class="bg-white shadow-lg rounded-lg p-4 md:p-6 mb-6">
-          <h2 class="text-xl font-semibold text-gray-700 mb-4">
-            {new Date(dayData.date).toLocaleDateString(undefined, {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })}
-            <span class="text-sm font-normal text-gray-500 ml-2">
-              ({dayData.readingsCount} readings)
-            </span>
-          </h2>
-          {#if dayData.readingsCount > 0}
-            <GlucoseChart
-              chartData={dayData.chartData}
-              date={dayData.date}
-              {thresholds}
-            />
-            <DailyStatistics {dayData} {thresholds} {getGlucoseColor} />
-            <DailyInsulinSummary
-              insulinBreakdown={getDailyInsulinBreakdown(dayData)}
-              treatmentSummary={dayData.treatmentSummary}
-            />
-            <TreatmentEvents treatments={dayData.treatmentData} />
-          {:else}
-            <div class="flex items-center justify-center h-32 text-gray-500">
-              No glucose data available for this day
-            </div>
-          {/if}
-        </div>
-      {/each}
-      <!-- Period Averages Summary -->
-      {#if overallAverages}
-        <PeriodAverages averages={overallAverages} {thresholds} />
-      {/if}
-      <TreatmentSummary {dailyDataPoints} />
-
-      <DailySummaryTable
-        {dailyDataPoints}
-        {getGlucoseColor}
-        {getDailyInsulinBreakdown}
-        {thresholds}
-      />
-    {:else}
-      <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-        <h3 class="text-yellow-800 font-semibold">No Data Available</h3>
-        <p class="text-yellow-600">
-          No glucose data found for the selected date range. Please check your
-          date selection or ensure glucose data is being uploaded to your
-          Nightscout instance.
-        </p>
-      </div>
-    {/if}
-  {:else}
-    <div class="flex items-center justify-center py-20">
-      <div class="text-center">
-        <div
-          class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"
-        ></div>
-        <p class="text-gray-500">Loading report details...</p>
-      </div>
     </div>
   {/if}
-</div>
+
+  {#if reportDetails.error}
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+      <h3 class="text-red-800 font-semibold">Error Loading Data</h3>
+      <p class="text-red-600">{reportDetails.error}</p>
+    </div>
+  {:else if dailyDataPoints.length > 0}
+    <!-- Individual Daily Charts -->
+    {#each dailyChartData as dayData (dayData.date)}
+      <div class="bg-white shadow-lg rounded-lg p-4 md:p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-700 mb-4">
+          {new Date(dayData.date).toLocaleDateString(undefined, {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          })}
+          <span class="text-sm font-normal text-gray-500 ml-2">
+            ({dayData.readingsCount} readings)
+          </span>
+        </h2>
+        {#if dayData.readingsCount > 0}
+          <GlucoseChart
+            chartData={dayData.chartData}
+            date={dayData.date}
+            {thresholds}
+          />
+          <DailyStatistics {dayData} {thresholds} />
+          <DailyInsulinSummary treatmentSummary={dayData.treatmentSummary} />
+          <TreatmentEvents treatments={dayData.treatmentData} />
+        {:else}
+          <div class="flex items-center justify-center h-32 text-gray-500">
+            No glucose data available for this day
+          </div>
+        {/if}
+      </div>
+    {/each}
+    <!-- Period Averages Summary -->
+    {#if overallAverages}
+      <PeriodAverages averages={overallAverages} {thresholds} />
+    {/if}
+    <TreatmentSummary {dailyDataPoints} />
+    <DailySummaryTable {dailyDataPoints} {thresholds} />
+  {:else}
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+      <h3 class="text-yellow-800 font-semibold">No Data Available</h3>
+      <p class="text-yellow-600">
+        No glucose data found for the selected date range. Please check your
+        date selection or ensure glucose data is being uploaded to your
+        Nightscout instance.
+      </p>
+    </div>
+  {/if}
+{:else}
+  <div class="flex items-center justify-center py-20">
+    <div class="text-center">
+      <div
+        class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"
+      ></div>
+      <p class="text-gray-500">Loading report details...</p>
+    </div>
+  </div>
+{/if}

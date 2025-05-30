@@ -148,15 +148,29 @@ function createEmptyAnalytics(): GlucoseAnalytics {
       continuousOverlappingNetGlycemicAction: 0,
       averageDailyRiskRange: 0,
       labilityIndex: 0,
-      jIndex: 0
+      jIndex: 0,
+      highBloodGlucoseIndex: 0,
+      lowBloodGlucoseIndex: 0,
+      glycemicVariabilityIndex: 0,
+      patientGlycemicStatus: 0
     },
     dataQuality: {
       totalReadings: 0,
       missingReadings: 0,
       dataCompleteness: 0,
       gapAnalysis: { gaps: [], longestGap: 0, averageGap: 0 },
-      noiseLevel: 0,
+          noiseLevel: 0,
       calibrationEvents: 0,
       sensorWarmups: 0
-    }  };
+    }
+  };
+}
+
+/**
+ * Get CSS color classes for glucose values based on thresholds
+ */
+export function getGlucoseColor(value: number, thresholds: { bgLow: number; bgHigh: number }): string {
+  if (value < thresholds.bgLow) return "text-red-600 font-semibold";
+  if (value > thresholds.bgHigh) return "text-orange-600 font-semibold";
+  return "text-green-600";
 }

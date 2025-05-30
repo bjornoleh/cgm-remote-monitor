@@ -7,10 +7,8 @@
     TableBody,
     TableCell,
     TableHead,
-    TableHeader,
-    TableRow,
+    TableHeader,    TableRow,
   } from "$lib/components/ui/table";
-  import DateRangePicker from "$lib/components/ui/date-range-picker.svelte";
   import TIRPieChart from "$lib/components/charts/TIRPieChart.svelte";
 
   let {
@@ -21,29 +19,6 @@
   const reportDetails = $derived(data.dailyStatsReport);
   const currentStats = $derived(reportDetails?.stats);
   const dailyData = $derived(currentStats?.recentDaysStats || []); // Renamed for clarity
-  // Date selection using DateRangePicker
-  const handleDateChange = (params: {
-    from?: string;
-    to?: string;
-    days?: number;
-  }) => {
-    const url = new URL($page.url);
-
-    // Support both single day and date range selections
-    if (params.from && params.to) {
-      url.searchParams.set("from", params.from);
-      url.searchParams.set("to", params.to);
-      url.searchParams.delete("days");
-      url.searchParams.delete("date");
-    } else if (params.days) {
-      url.searchParams.set("days", params.days.toString());
-      url.searchParams.delete("from");
-      url.searchParams.delete("to");
-      url.searchParams.delete("date");
-    }
-
-    goto(url.toString());
-  };
 
   // Function to calculate percentiles
   function calculatePercentile(values: number[], percentile: number): number {
@@ -145,60 +120,41 @@
         value: tir.severeHigh,
         color: "rgb(239, 68, 68)",
       }, // red-500
-    ].filter((segment) => segment.value > 0); // Filter out 0-value segments
-  });
+    ].filter((segment) => segment.value > 0); // Filter out 0-value segments  });
 </script>
 
-<div class="p-4 md:p-6 bg-gray-100 min-h-screen">
-  {#if reportDetails}
-    <header class="mb-6">
-      <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-1">
-        {reportDetails.reportName}
-      </h1>
-      <p class="text-xs md:text-sm text-gray-600">
-        Generated: {reportDetails.generatedDate}
-      </p>
-      {#if reportDetails.dateRange}
-        <p class="text-xs md:text-sm text-gray-600">
-          Date Range: {reportDetails.dateRange.from} - {reportDetails.dateRange
-            .to}
-          {reportDetails.dateRange.days
-            ? `(${reportDetails.dateRange.days} day${reportDetails.dateRange.days > 1 ? "s" : ""})`
-            : ""}
-        </p>
-      {/if}
+{#if reportDetails}
+  {#if reportDetails.dateRange}
+    <div class="text-center text-sm text-muted-foreground mb-6">
+      Showing data from {reportDetails.dateRange.from} to {reportDetails.dateRange.to}
+      {reportDetails.dateRange.days
+        ? `(${reportDetails.dateRange.days} day${reportDetails.dateRange.days > 1 ? "s" : ""})`
+        : ""}
       {#if reportDetails.totalReadings}
-        <p class="text-xs md:text-sm text-gray-600">
-          Total readings: {reportDetails.totalReadings}
-        </p>
+        • {reportDetails.totalReadings} total readings
       {/if}
-    </header>
-    <DateRangePicker
-      title="Select Date Range for Daily Stats"
-      showDaysPresets={true}
-      defaultDays={1}
-      onDateChange={handleDateChange}
-    />
+    </div>
+  {/if}  {/if}
 
-    {#if reportDetails.error}
-      <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-        <h3 class="text-red-800 font-semibold mb-2">Error Loading Data</h3>
-        <p class="text-red-700">{reportDetails.error}</p>
-      </div>
-    {:else if !currentStats}
-      <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-        <h3 class="text-yellow-800 font-semibold mb-2">No Data Available</h3>
-        <p class="text-yellow-700">
-          No glucose data found for the selected date.
-        </p>
-      </div>
-    {:else}
-      <!-- Time in Range Pie Chart -->
-      {#if pieChartData.length > 0}
-        <div class="bg-white shadow-lg rounded-lg p-4 md:p-6 mb-8">
-          <h2 class="text-xl font-semibold text-gray-700 mb-4">
-            Time in Range Distribution
-          </h2>
+  {#if reportDetails.error}
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+      <h3 class="text-red-800 font-semibold mb-2">Error Loading Data</h3>
+      <p class="text-red-700">{reportDetails.error}</p>
+    </div>
+  {:else if !currentStats}
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+      <h3 class="text-yellow-800 font-semibold mb-2">No Data Available</h3>
+      <p class="text-yellow-700">
+        No glucose data found for the selected date.
+      </p>
+    </div>
+  {:else}
+    <!-- Time in Range Pie Chart -->
+    {#if pieChartData.length > 0}
+      <div class="bg-white shadow-lg rounded-lg p-4 md:p-6 mb-8">
+        <h2 class="text-xl font-semibold text-gray-700 mb-4">
+          Time in Range Distribution
+        </h2>
           <TIRPieChart tirData={pieChartData} />
         </div>
       {/if}
@@ -411,15 +367,13 @@
               </TableBody>
             </Table>
           </div>
-        {:else}
-          <p class="text-sm text-gray-500 text-center p-4">
-            No daily statistics data available.
-          </p>
-        {/if}
-      </div>
-    {/if}
-    <!-- End of currentStats check -->
-  {:else}
-    <p class="text-center text-gray-500 py-10">Loading daily statistics...</p>
+        {:else}        <p class="text-sm text-gray-500 text-center p-4">
+          No daily statistics data available.
+        </p>
+      {/if}
+    </div>
   {/if}
-</div>
+  <!-- End of currentStats check -->
+{:else}
+  <p class="text-center text-gray-500 py-10">Loading daily statistics...</p>
+{/if}

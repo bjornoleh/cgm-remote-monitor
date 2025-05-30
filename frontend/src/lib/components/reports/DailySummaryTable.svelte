@@ -10,23 +10,18 @@
   } from "$lib/components/ui/table";
   import {
     formatInsulinDisplay,
-    type InsulinBreakdown,
+    getTotalInsulin,
+    convertLegacyTreatmentSummary,
   } from "$lib/utils/calculate/treatment-stats";
   import type { DayToDayDailyData, Thresholds } from "./types";
+  import { getGlucoseColor } from "$lib/utils/glucose-analytics";
 
   interface Props {
     dailyDataPoints: DayToDayDailyData[];
-    getGlucoseColor: (value: number) => string;
-    getDailyInsulinBreakdown: (day: DayToDayDailyData) => InsulinBreakdown;
     thresholds: Thresholds;
   }
 
-  let {
-    dailyDataPoints,
-    getGlucoseColor,
-    getDailyInsulinBreakdown,
-    thresholds,
-  }: Props = $props();
+  let { dailyDataPoints, thresholds }: Props = $props();
 </script>
 
 <div class="bg-white shadow-lg rounded-lg p-4 md:p-6">
@@ -55,7 +50,7 @@
               day: "numeric",
             })}
           </TableCell>
-          <TableCell class={getGlucoseColor(entry.averageGlucose)}>
+          <TableCell class={getGlucoseColor(entry.averageGlucose, thresholds)}>
             {entry.averageGlucose || "N/A"}
           </TableCell>
           <TableCell class="text-sm">
@@ -101,13 +96,16 @@
             {/if}
           </TableCell>
           <TableCell class="text-right">
-            {@const insulinBreakdown = getDailyInsulinBreakdown(entry)}
+            {@const structuredSummary = convertLegacyTreatmentSummary(
+              entry.treatmentSummary
+            )}
             <span class="font-medium">
-              {formatInsulinDisplay(insulinBreakdown.total)}U
+              {formatInsulinDisplay(getTotalInsulin(structuredSummary))}U
             </span>
             <div class="text-xs text-gray-500">
-              B: {formatInsulinDisplay(insulinBreakdown.bolus)}U | Ba: {formatInsulinDisplay(
-                insulinBreakdown.basal
+              B: {formatInsulinDisplay(structuredSummary.totals.insulin.bolus)}U
+              | Ba: {formatInsulinDisplay(
+                structuredSummary.totals.insulin.basal
               )}U
             </div>
           </TableCell>

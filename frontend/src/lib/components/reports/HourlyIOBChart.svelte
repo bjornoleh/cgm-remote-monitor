@@ -1,10 +1,18 @@
 <script lang="ts">
-  import { Chart, Axis, Svg, Tooltip, Bars, Highlight } from "layerchart";
+  import {
+    BarChart,
+    Axis,
+    Svg,
+    Tooltip,
+    Bars,
+    Highlight,
+    groupStackData,
+  } from "layerchart";
+  import * as ChartC from "$lib/components/ui/Chart/index.js";
   import testHourlyStats from "$lib/data/example-hourly-stats.json";
   interface HourlyStats {
     hour: number;
-    basalIob: number;
-    tempIob: number;
+    iobType: "basalIob" | "tempIob";
   }
 
   interface Props {
@@ -12,42 +20,6 @@
   }
 
   let { hourlyStats }: Props = $props(); // Transform data for stacked bar chart
-  const chartData = $derived.by(() => {
-    const stackedData = [];
-
-    for (const stats of testHourlyStats) {
-      const basalIob = stats.basalIob || 0;
-      const tempIob = stats.tempIob || 0;
-      const totalIob = basalIob + tempIob;
-
-      // Create entry for basal IOB (bottom of stack)
-      stackedData.push({
-        hour: stats.hour,
-        iobType: "basalIob",
-        value: basalIob,
-        values: [0, basalIob],
-        data: [
-          { hour: stats.hour, iobType: "basalIob", value: basalIob },
-          { hour: stats.hour, iobType: "tempIob", value: tempIob },
-        ],
-      });
-
-      // Create entry for temp IOB (top of stack)
-      stackedData.push({
-        hour: stats.hour,
-        iobType: "tempIob",
-        value: tempIob,
-        values: [basalIob, totalIob],
-        data: [
-          { hour: stats.hour, iobType: "basalIob", value: basalIob },
-          { hour: stats.hour, iobType: "tempIob", value: tempIob },
-        ],
-      });
-    }
-
-    return stackedData;
-  });
-
   // Format hour for display
   function formatHour(hour: number): string {
     if (hour === 0) return "12 AM";
@@ -55,53 +27,41 @@
     if (hour === 12) return "12 PM";
     return `${hour - 12} PM`;
   }
-  // Calculate Y domain based on max IOB
-  const yDomain = $derived.by(() => {
-    if (chartData.length === 0) return [0, 2];
-
-    const maxIob = Math.max(...chartData.map((d) => Math.max(...d.values)));
-    return [0, Math.max(2, maxIob * 1.1)]; // Add 10% padding
-  });
-
-  // Colors for stacked bars
-  const basalColor = "red";
-  const tempColor = "green";
-  $inspect({
-    chartData,
-    yDomain,
-    basalColor,
-    tempColor,
-  });
 </script>
 
-<div class="w-full h-80">
-  {#if chartData.length > 0}
-    <Chart
-      data={chartData}
+<ChartC.Container class="w-full h-80">
+  {#if hourlyStats.length > 0}
+    <BarChart
+      legend
+      data={testHourlyStats}
       x="hour"
-      y="values"
-      c="iobType"
-      cDomain={["basalIob", "tempIob"]}
-      cRange={[basalColor, tempColor]}
-      {yDomain}
-      xDomain={[0, 23]}
-      padding={{ top: 20, right: 30, bottom: 60, left: 60 }}
-    >
-      {#snippet children({ context })}
-        <Svg>
-          <Axis placement="left" rule grid label="Insulin on Board (U)" />
-          <Axis
-            placement="bottom"
-            rule
-            label="Hour of Day"
-            format={formatHour}
-            ticks={[0, 3, 6, 9, 12, 15, 18, 21]}
-          />
+      series={[
+        {
+          key: "basalIob",
+          color: "var(--iob-basal)",
+          label: "Basal IOB",
+        },
+        {
+          key: "tempIob",
+          color: "var(--iob-temporary)",
+          label: "Temp IOB",
+        },
+      ]}
+      props={{
+        xAxis: { format: "none" },
+        yAxis: { format: "metric" },
+        bars: { radius: 5.0, rounded: "all" },
+        tooltip: {
+          header: { format: "none" },
+        },
+      }}
+      seriesLayout="stack"
+      stackPadding={5.0}
+      padding={{ top: 20, right: 30, bottom: 40, left: 60 }}
+    />
 
-          <Bars strokeWidth={1} />
-          <Highlight area />
-          <!-- Custom tooltip -->
-          <Tooltip.Root
+    <!-- Custom tooltip -->
+    <!-- <Tooltip.Root
             class="bg-popover text-popover-foreground p-3 rounded-md shadow-lg border"
           >
             {#snippet children({ data })}
@@ -140,28 +100,7 @@
                 </div>
               </div>
             {/snippet}
-          </Tooltip.Root>
-        </Svg>
-      {/snippet}
-    </Chart>
-
-    <!-- Legend -->
-    <div class="flex justify-center gap-6 mt-4 text-sm">
-      <div class="flex items-center gap-2">
-        <div
-          class="w-4 h-4 rounded"
-          style="background-color: {basalColor}; opacity: 0.8;"
-        ></div>
-        <span>Basal IOB</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <div
-          class="w-4 h-4 rounded"
-          style="background-color: {tempColor}; opacity: 0.8;"
-        ></div>
-        <span>Temporary IOB</span>
-      </div>
-    </div>
+          </Tooltip.Root> -->
   {:else}
     <div class="flex items-center justify-center h-full text-muted-foreground">
       <div class="text-center">
@@ -170,4 +109,4 @@
       </div>
     </div>
   {/if}
-</div>
+</ChartC.Container>
