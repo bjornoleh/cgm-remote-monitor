@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Chart, Axis, Svg, Tooltip } from "layerchart";
+  import { Chart, Axis, Svg, Tooltip, Line, Rect, Group } from "layerchart";
 
   interface HourlyBoxPlotData {
     hour: number;
@@ -44,7 +44,7 @@
   }
 
   // Define Y domain based on data
-  const yDomain = $derived.by(() => {
+  const yDomain: [number, number] = $derived.by(() => {
     if (chartData.length === 0) return [0, 400];
 
     const allValues = chartData
@@ -72,7 +72,7 @@
       padding={{ top: 20, right: 30, bottom: 60, left: 60 }}
     >
       <Svg>
-        <!-- Y-axis with glucose threshold lines -->
+        <!-- Y-axis with glucose threshold Lines -->
         <Axis placement="left" rule grid label="Glucose (mg/dL)" />
         <Axis
           placement="bottom"
@@ -81,56 +81,54 @@
           format={formatHour}
           ticks={[0, 3, 6, 9, 12, 15, 18, 21]}
         />
-
         <!-- Target range background -->
-        <g class="target-ranges">
+        <Group class="target-ranges">
           <!-- Target range (70-180) -->
-          <rect
-            x="0"
-            y={`calc(100% - ${((180 - yDomain[0]) / (yDomain[1] - yDomain[0])) * 100}%)`}
-            width="100%"
-            height={`${((180 - 70) / (yDomain[1] - yDomain[0])) * 100}%`}
+          <Rect
+            x={-0.5}
+            y={70}
+            width={24}
+            height={110}
             fill="hsl(var(--success))"
             fill-opacity="0.1"
           />
-
-          <!-- High line (180) -->
-          <line
-            x1="0"
+          <!-- High Line (180) -->
+          <Line
+            x1="0%"
             x2="100%"
-            y1={`calc(100% - ${((180 - yDomain[0]) / (yDomain[1] - yDomain[0])) * 100}%)`}
-            y2={`calc(100% - ${((180 - yDomain[0]) / (yDomain[1] - yDomain[0])) * 100}%)`}
+            y1={180}
+            y2={180}
             stroke="hsl(var(--destructive))"
             stroke-width="1"
             stroke-dasharray="5,5"
-            opacity="0.7"
+            opacity={0.7}
           />
 
           <!-- Low line (70) -->
-          <line
-            x1="0"
+          <Line
+            x1="0%"
             x2="100%"
-            y1={`calc(100% - ${((70 - yDomain[0]) / (yDomain[1] - yDomain[0])) * 100}%)`}
-            y2={`calc(100% - ${((70 - yDomain[0]) / (yDomain[1] - yDomain[0])) * 100}%)`}
+            y1={70}
+            y2={70}
             stroke="hsl(var(--destructive))"
             stroke-width="1"
             stroke-dasharray="5,5"
-            opacity="0.7"
+            opacity={0.7}
           />
-        </g>
-
+        </Group>
         <!-- Custom box plots -->
-        <g class="box-plots">
+        <Group class="box-plots">
           {#each chartData as data}
-            {@const xPos = (data.hour / 23) * 100}
-            {@const boxWidth = 2}
+            {@const boxWidth = 0.8}
+            {@const xPosition = (data.hour / 23) * 100}
+            {@const boxWidthPercent = (boxWidth / 24) * 100}
 
             <!-- Box (IQR) -->
-            <rect
-              x={`calc(${xPos}% - ${boxWidth / 2}%)`}
-              y={`calc(100% - ${((data.q3 - yDomain[0]) / (yDomain[1] - yDomain[0])) * 100}%)`}
-              width={`${boxWidth}%`}
-              height={`${((data.q3 - data.q1) / (yDomain[1] - yDomain[0])) * 100}%`}
+            <Rect
+              x={`${xPosition - boxWidthPercent / 2}%`}
+              y={data.q1}
+              width={`${boxWidthPercent}%`}
+              height={data.q3 - data.q1}
               fill="hsl(var(--primary))"
               fill-opacity="0.3"
               stroke="hsl(var(--primary))"
@@ -138,50 +136,50 @@
             />
 
             <!-- Median line -->
-            <line
-              x1={`calc(${xPos}% - ${boxWidth / 2}%)`}
-              x2={`calc(${xPos}% + ${boxWidth / 2}%)`}
-              y1={`calc(100% - ${((data.median - yDomain[0]) / (yDomain[1] - yDomain[0])) * 100}%)`}
-              y2={`calc(100% - ${((data.median - yDomain[0]) / (yDomain[1] - yDomain[0])) * 100}%)`}
+            <Line
+              x1={`${xPosition - boxWidthPercent / 2}%`}
+              x2={`${xPosition + boxWidthPercent / 2}%`}
+              y1={data.median}
+              y2={data.median}
               stroke="hsl(var(--primary))"
               stroke-width="3"
             />
 
             <!-- Upper whisker -->
-            <line
-              x1={`${xPos}%`}
-              x2={`${xPos}%`}
-              y1={`calc(100% - ${((data.q3 - yDomain[0]) / (yDomain[1] - yDomain[0])) * 100}%)`}
-              y2={`calc(100% - ${((data.max - yDomain[0]) / (yDomain[1] - yDomain[0])) * 100}%)`}
+            <Line
+              x1={`${xPosition}%`}
+              x2={`${xPosition}%`}
+              y1={data.q3}
+              y2={data.max}
               stroke="hsl(var(--primary))"
               stroke-width="1"
             />
 
             <!-- Lower whisker -->
-            <line
-              x1={`${xPos}%`}
-              x2={`${xPos}%`}
-              y1={`calc(100% - ${((data.q1 - yDomain[0]) / (yDomain[1] - yDomain[0])) * 100}%)`}
-              y2={`calc(100% - ${((data.min - yDomain[0]) / (yDomain[1] - yDomain[0])) * 100}%)`}
+            <Line
+              x1={`${xPosition}%`}
+              x2={`${xPosition}%`}
+              y1={data.q1}
+              y2={data.min}
               stroke="hsl(var(--primary))"
               stroke-width="1"
             />
 
             <!-- Whisker caps -->
-            <line
-              x1={`calc(${xPos}% - 0.5%)`}
-              x2={`calc(${xPos}% + 0.5%)`}
-              y1={`calc(100% - ${((data.max - yDomain[0]) / (yDomain[1] - yDomain[0])) * 100}%)`}
-              y2={`calc(100% - ${((data.max - yDomain[0]) / (yDomain[1] - yDomain[0])) * 100}%)`}
+            <Line
+              x1={`${xPosition - 1.5}%`}
+              x2={`${xPosition + 1.5}%`}
+              y1={data.max}
+              y2={data.max}
               stroke="hsl(var(--primary))"
               stroke-width="1"
             />
 
-            <line
-              x1={`calc(${xPos}% - 0.5%)`}
-              x2={`calc(${xPos}% + 0.5%)`}
-              y1={`calc(100% - ${((data.min - yDomain[0]) / (yDomain[1] - yDomain[0])) * 100}%)`}
-              y2={`calc(100% - ${((data.min - yDomain[0]) / (yDomain[1] - yDomain[0])) * 100}%)`}
+            <Line
+              x1={`${xPosition - 1.5}%`}
+              x2={`${xPosition + 1.5}%`}
+              y1={data.min}
+              y2={data.min}
               stroke="hsl(var(--primary))"
               stroke-width="1"
             />
@@ -189,8 +187,8 @@
             <!-- Outliers -->
             {#each data.outliers as outlier}
               <circle
-                cx={`${xPos}%`}
-                cy={`calc(100% - ${((outlier - yDomain[0]) / (yDomain[1] - yDomain[0])) * 100}%)`}
+                cx={`${xPosition}%`}
+                cy={outlier}
                 r="2"
                 fill="hsl(var(--destructive))"
                 stroke="hsl(var(--destructive))"
@@ -198,7 +196,7 @@
               />
             {/each}
           {/each}
-        </g>
+        </Group>
 
         <!-- Tooltip -->
         <Tooltip.Root
@@ -240,11 +238,11 @@
     pointer-events: none;
   }
 
-  :global(.box-plots rect:hover) {
+  :global(.box-plots Rect:hover) {
     fill-opacity: 0.5;
   }
 
-  :global(.box-plots line:hover) {
+  :global(.box-plots Line:hover) {
     stroke-width: 2;
   }
 </style>

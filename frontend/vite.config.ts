@@ -10,9 +10,6 @@ const isDevelopment = process.env.NODE_ENV === "development";
 const isDemo = process.env.VITE_MODE === "demo";
 
 export default defineConfig({
-  root: "./bundle",
-  appType: "mpa",
-  publicDir: "public",
   build: {
     sourcemap: true,
     minify: !isDevelopment,
@@ -34,7 +31,8 @@ export default defineConfig({
       transformMixedEsModules: true,
       defaultIsModuleExports: true,
     },
-  },  define: {
+  },
+  define: {
     global: "window",
     "process.env.NODE_ENV": JSON.stringify(
       isDemo ? "demo" : (process.env.NODE_ENV ?? "production")

@@ -18,6 +18,7 @@
   } = $props();
   const reportData = $derived(data.success ? data.data : null);
   const hourlyStats = $derived(reportData?.hourlyStats || []);
+  const boxPlotData = $derived(reportData?.boxPlotData || []);
   const dateRange = $derived(reportData?.dateRange);
 
   // Format hour for display (24-hour to 12-hour format)

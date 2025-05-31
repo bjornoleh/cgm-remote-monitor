@@ -55,6 +55,18 @@
         "Variability analysis",
         "Weekly patterns",
       ],
+      status: "available",    },
+    {
+      title: "Weekly Overview Report",
+      description: "Weekly glucose percentile distribution and trends analysis",
+      icon: "📈",
+      href: "/reports/weekly-overview",
+      features: [
+        "Percentile distribution",
+        "Stacked area charts",
+        "Weekly trends",
+        "Time in range analysis",
+      ],
       status: "available",
     },
     {
