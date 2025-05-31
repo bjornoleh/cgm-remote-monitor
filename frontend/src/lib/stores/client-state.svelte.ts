@@ -12,6 +12,10 @@ export interface Entry {
 	unfiltered?: number;
 	rssi?: number;
 	noise?: number;
+	// Additional fields for demo data
+	dateString?: string;
+	device?: string;
+	delta?: number;
 }
 
 export interface Treatment {
@@ -35,15 +39,93 @@ export interface Treatment {
 	rate?: number;
 	profile?: string;
 	enteredBy?: string;
+	// Additional fields for demo data
+	mills?: number;
+	units?: string;
+	temp?: string;
+	splitNow?: number;
+	splitExt?: number;
+	targetTop?: number;
+	targetBottom?: number;
 }
 
 export interface DeviceStatus {
 	_id: string;
 	device: string;
 	created_at: string;
-	pump?: any;
-	uploader?: any;
+	pump?: {
+		battery?: {
+			percent?: number;
+			voltage?: number;
+		};
+		reservoir?: number;
+		clock?: string;
+		status?: {
+			status: string;
+			bolusing: boolean;
+			suspended: boolean;
+		};
+		iob?: {
+			timestamp: string;
+			bolusiob: number;
+			basaliob: number;
+		};
+	};
+	uploader?: {
+		battery: number;
+		name?: string;
+		type?: string;
+	};
 	loop?: any;
+	openaps?: {
+		suggested?: any;
+		enacted?: any;
+		iob?: any;
+	};
+	// Additional fields for demo data
+	mills?: number;
+}
+
+export interface ServerSettings {
+	name?: string;
+	version?: string;
+	apiEnabled?: boolean;
+	careportalEnabled?: boolean;
+	boluscalcEnabled?: boolean;
+	head?: string;
+	runtimeState?: string;
+	settings?: {
+		units?: string;
+		timeFormat?: number;
+		nightMode?: boolean;
+		showRawbg?: string;
+		customTitle?: string;
+		theme?: string;
+		alarmUrgentHigh?: boolean;
+		alarmHigh?: boolean;
+		alarmLow?: boolean;
+		alarmUrgentLow?: boolean;
+		alarmTimeagoWarn?: boolean;
+		alarmTimeagoWarnMins?: number;
+		alarmTimeagoUrgent?: boolean;
+		alarmTimeagoUrgentMins?: number;
+		language?: string;
+		enable?: string;
+		showPlugins?: string;
+		alarmTypes?: string;
+		editMode?: boolean;
+		thresholds?: {
+			bgHigh?: number;
+			bgTargetTop?: number;
+			bgTargetBottom?: number;
+			bgLow?: number;
+		};
+		extendedSettings?: any;
+	};
+	extendedSettings?: any;
+	authorized?: {
+		role?: string[];
+	};
 }
 
 export interface ClientSettings {

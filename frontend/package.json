@@ -25,6 +25,7 @@
 	"description": "",
 	"scripts": {
 		"dev": "vite dev",
+		"dev:demo": "vite dev --mode demo",
 		"dev:prod": "vite dev --mode production",
 		"dev:test": "vite dev --mode test",
 		"build": "vite build",

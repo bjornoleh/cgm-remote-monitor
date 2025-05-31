@@ -10,6 +10,7 @@
   } from "$lib/components/ui/table";
   import * as Card from "$lib/components/ui/card";
   import HourlyIOBChart from "$lib/components/reports/HourlyIOBChart.svelte";
+  import HourlyGlucoseBoxChart from "$lib/components/reports/HourlyGlucoseBoxChart.svelte";
   let {
     data,
   }: {
@@ -148,10 +149,7 @@
         <Card.Title>Hourly Glucose Distribution</Card.Title>
       </Card.Header>
       <Card.Content>
-        <!-- <HourlyGlucoseBoxChart {boxPlotData} /> -->
-        <p class="text-sm text-muted-foreground">
-          Chart component will be available soon
-        </p>
+        <HourlyGlucoseBoxChart {boxPlotData} />
       </Card.Content>
     </Card.Root>
 

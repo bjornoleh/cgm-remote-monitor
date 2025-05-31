@@ -9,17 +9,23 @@
     groupStackData,
   } from "layerchart";
   import * as ChartC from "$lib/components/ui/Chart/index.js";
-  import testHourlyStats from "$lib/data/example-hourly-stats.json";
-  interface HourlyStats {
-    hour: number;
-    iobType: "basalIob" | "tempIob";
-  }
+  import type { HourlyStats } from "$lib/calculations";
 
   interface Props {
     hourlyStats: HourlyStats[];
   }
 
-  let { hourlyStats }: Props = $props(); // Transform data for stacked bar chart
+  let { hourlyStats }: Props = $props();
+
+  // Transform data for stacked bar chart
+  let chartData = $derived.by(() =>
+    hourlyStats.map((stats) => ({
+      hour: stats.hour,
+      basalIob: stats.basalIob,
+      tempIob: stats.tempIob,
+    }))
+  );
+
   // Format hour for display
   function formatHour(hour: number): string {
     if (hour === 0) return "12 AM";
@@ -33,7 +39,7 @@
   {#if hourlyStats.length > 0}
     <BarChart
       legend
-      data={testHourlyStats}
+      data={chartData}
       x="hour"
       series={[
         {

@@ -7,6 +7,7 @@ import { resolve } from "path";
 import { paraglide } from "@inlang/paraglide-sveltekit/vite";
 
 const isDevelopment = process.env.NODE_ENV === "development";
+const isDemo = process.env.VITE_MODE === "demo";
 
 export default defineConfig({
   root: "./bundle",
@@ -33,11 +34,10 @@ export default defineConfig({
       transformMixedEsModules: true,
       defaultIsModuleExports: true,
     },
-  },
-  define: {
+  },  define: {
     global: "window",
     "process.env.NODE_ENV": JSON.stringify(
-      process.env.NODE_ENV ?? "production",
+      isDemo ? "demo" : (process.env.NODE_ENV ?? "production")
     ),
   },
   assetsInclude: ["**/*.jpg", "**/*.png", "**/*.gif"],

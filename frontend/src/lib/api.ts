@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit';
+import { demoData } from './data/demo-data.js';
 
 export interface ApiCallOptions {
 	/** API endpoint path (e.g., '/api/v1/entries.json') */
@@ -6,7 +7,7 @@ export interface ApiCallOptions {
 	/** HTTP method (default: 'GET') */
 	method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 	/** Request body for POST/PUT requests */
-	body?: any;
+	body?: unknown;
 	/** Additional headers to include */
 	headers?: Record<string, string>;
 	/** Query parameters to append to the URL */
@@ -15,7 +16,7 @@ export interface ApiCallOptions {
 	throwOnError?: boolean;
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
 	success: boolean;
 	data?: T;
 	error?: string;
@@ -24,16 +25,57 @@ export interface ApiResponse<T = any> {
 }
 
 /**
+ * Handle demo requests by returning dummy data based on endpoint
+ */
+function handleDemoRequest<T>(options: ApiCallOptions): Promise<ApiResponse<T>> {
+	const { endpoint } = options;
+
+	// Add a small delay to simulate network request
+	return new Promise((resolve) => {
+		setTimeout(() => {
+			let data: unknown;
+
+			if (endpoint.includes('/api/v1/entries') || endpoint.includes('/entries.json')) {
+				data = demoData.entries();
+			} else if (endpoint.includes('/api/v1/treatments') || endpoint.includes('/treatments.json')) {
+				data = demoData.treatments();
+			} else if (endpoint.includes('/api/v1/devicestatus') || endpoint.includes('/devicestatus.json')) {
+				data = demoData.devicestatus();
+			} else if (endpoint.includes('/api/v1/status') || endpoint === '/api/v1/status.json') {
+				data = demoData.status();
+			} else if (endpoint.includes('hourly-stats')) {
+				data = demoData.hourlyStats();
+			} else {
+				// Default response for unknown endpoints
+				data = { message: 'Demo data not available for this endpoint' };
+			}
+
+			resolve({
+				success: true,
+				data: data as T,
+				status: 200,
+				statusText: 'OK'
+			});
+		}, Math.random() * 500 + 100); // 100-600ms delay
+	});
+}
+
+/**
  * Makes an authenticated API call to the Nightscout backend
  * @param fetch - SvelteKit fetch function
  * @param options - API call configuration
  * @returns Promise with the API response
  */
-export async function apiCall<T = any>(
+export async function apiCall<T = unknown>(
 	fetch: typeof globalThis.fetch,
 	options: ApiCallOptions
 ): Promise<ApiResponse<T>> {
 	try {
+		// Check if we're in demo mode
+		if (import.meta.env.MODE === 'demo') {
+			return handleDemoRequest<T>(options);
+		}
+
         const {
 			endpoint,
 			method = 'GET',
@@ -136,7 +178,7 @@ export async function apiCall<T = any>(
 /**
  * Convenience function for GET requests
  */
-export async function apiGet<T = any>(
+export async function apiGet<T = unknown>(
 	fetch: typeof globalThis.fetch,
 	endpoint: string,
 	options: Omit<ApiCallOptions, 'endpoint' | 'method'> = {}
@@ -147,10 +189,10 @@ export async function apiGet<T = any>(
 /**
  * Convenience function for POST requests
  */
-export async function apiPost<T = any>(
+export async function apiPost<T = unknown>(
 	fetch: typeof globalThis.fetch,
 	endpoint: string,
-	body?: any,
+	body?: unknown,
 	options: Omit<ApiCallOptions, 'endpoint' | 'method' | 'body'> = {}
 ): Promise<ApiResponse<T>> {
 	return apiCall<T>(fetch, { ...options, endpoint, method: 'POST', body });
@@ -159,10 +201,10 @@ export async function apiPost<T = any>(
 /**
  * Convenience function for PUT requests
  */
-export async function apiPut<T = any>(
+export async function apiPut<T = unknown>(
 	fetch: typeof globalThis.fetch,
 	endpoint: string,
-	body?: any,
+	body?: unknown,
 	options: Omit<ApiCallOptions, 'endpoint' | 'method' | 'body'> = {}
 ): Promise<ApiResponse<T>> {
 	return apiCall<T>(fetch, { ...options, endpoint, method: 'PUT', body });
@@ -171,7 +213,7 @@ export async function apiPut<T = any>(
 /**
  * Convenience function for DELETE requests
  */
-export async function apiDelete<T = any>(
+export async function apiDelete<T = unknown>(
 	fetch: typeof globalThis.fetch,
 	endpoint: string,
 	options: Omit<ApiCallOptions, 'endpoint' | 'method'> = {}
