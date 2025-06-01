@@ -8,7 +8,7 @@
     Highlight,
     groupStackData,
   } from "layerchart";
-  import * as ChartC from "$lib/components/ui/Chart/index.js";
+  import * as ChartC from "$lib/components/ui/chart/index.js";
   import type { HourlyStats } from "$lib/calculations";
 
   interface Props {
@@ -35,8 +35,8 @@
   }
 </script>
 
-<ChartC.Container class="w-full h-80">
-  {#if hourlyStats.length > 0}
+<ChartC.Container config={{}} class="w-full h-80">
+  {#if hourlyStats.length > 0 && hourlyStats.some((h) => h.basalIob || h.tempIob)}
     <BarChart
       legend
       data={chartData}

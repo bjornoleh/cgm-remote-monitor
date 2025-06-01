@@ -1,109 +1,80 @@
 <script lang="ts">
   import { AreaChart } from "layerchart";
-  import { TIR_COLORS_CSS } from "$lib/constants/tir-colors";
   import type { HourlyStats } from "$lib/calculations/types.js";
-  import { percentile } from "$lib/calculations/statistics.js";
 
   let {
     hourlyStats,
   }: {
     hourlyStats: HourlyStats[];
   } = $props();
-
-  // Transform hourly stats to include p10 and p90 percentiles
-  const data = $derived(
-    hourlyStats.map((stats) => {
-      const values = stats.glucoseValues;
-      const sortedValues = [...values].sort((a, b) => a - b);
-
-      let p10 = stats.quartile25; // fallback
-      let p90 = stats.quartile75; // fallback
-
-      if (sortedValues.length > 0) {
-        p10 = percentile(sortedValues, 10);
-        p90 = percentile(sortedValues, 90);
-      }
-
-      return {
-        hour: stats.hour,
-        p10: Math.round(p10 * 10) / 10,
-        p25: stats.quartile25,
-        median: stats.median,
-        p75: stats.quartile75,
-        p90: Math.round(p90 * 10) / 10,
-      };
-    })
-  );
-
-  // Format hour for display
-  function formatHour(hour: number): string {
-    if (hour === 0) return "12 AM";
-    if (hour < 12) return `${hour} AM`;
-    if (hour === 12) return "12 PM";
-    return `${hour - 12} PM`;
-  }
-  // Format glucose value
-  function formatGlucose(value: number): string {
-    return Math.round(value).toString();
-  }
 </script>
 
-<div class="w-full">
-  <div class="mb-4">
-    <h3 class="text-lg font-semibold text-foreground">
-      24-Hour Glucose Percentile Chart
-    </h3>
-    <p class="text-sm text-muted-foreground">
-      Glucose distribution across percentiles throughout the day (similar to old
-      Nightscout percentile chart)
-    </p>
-  </div>
-
-  {#if data.length > 0}
-    <div class="h-[400px] p-4 border rounded-sm">
-      <AreaChart
-        {data}
-        x={(d) => d.hour}
-        series={[
-          {
-            key: "p25",
-            value: (d) => d.p25,
-            color: "#000055",
+<div class="h-[400px] p-4 border rounded-sm">
+  {#if hourlyStats.length > 0}
+    <AreaChart
+      data={hourlyStats}
+      x={(d) => d.hour}
+      y={(d) => d.median}
+      renderContext="svg"
+      series={[
+        {
+          key: "p10",
+          value: [(d) => d.quartile25, (d) => d.p10],
+          color: "var(--chart-1)",
+          label: "P10",
+        },
+        {
+          key: "p25",
+          value: [(d) => d.median, (d) => d.quartile25],
+          color: "var(--chart-2)",
+        },
+        {
+          key: "median",
+          value: [(d) => d.median, (d) => d.median],
+          color: "black",
+          props: {
+            line: { strokeWidth: 1.75 },
           },
-          {
-            key: "median",
-            value: (d) => d.median,
-            color: "#000000",
-            label: "Median",
-          },
-          {
-            key: "p75",
-            value: (d) => d.p75,
-            color: "#000055",
-          },
-        ]}
-        xDomain={[0, 23]}
-        yDomain={[0, 400]}
-        padding={{ top: 20, right: 20, bottom: 40, left: 60 }}
-      />
-    </div>
+          label: "median",
+        },
+        {
+          key: "quartile75",
+          value: [(d) => d.median, (d) => d.quartile75],
+          color: "var(--chart-3)",
+          label: "quartile75",
+        },
+        {
+          key: "p90",
+          value: [(d) => d.quartile75, (d) => d.p90],
+          color: "var(--chart-1)",
+        },
+        // {
+        //   key: "p90",
+        //   value: (d) => d.p90,
+        //   color: "#0000aa",
+        // },
+      ]}
+      xDomain={[0, 23]}
+      yDomain={[0, 400]}
+      seriesLayout="overlap"
+      brush
+      props={{
+        area: { motion: { type: "tween", duration: 200 } },
+        xAxis: {
+          motion: { type: "tween", duration: 200 },
+          tickMultiline: true,
+        },
+      }}
+      padding={{ top: 20, right: 20, bottom: 40, left: 60 }}
+    ></AreaChart>
   {:else}
-    <div
-      class="flex items-center justify-center h-[400px] text-muted-foreground border rounded-sm"
-    >
+    <div class="flex items-center justify-center text-muted-foreground">
       <div class="text-center">
         <p class="text-lg font-medium">No data available</p>
         <p class="text-sm">
-          No glucose readings found for percentile visualization
+          No glucose data found for the selected time period
         </p>
       </div>
     </div>
   {/if}
 </div>
-
-<style>
-  /* Custom styles for better visualization */
-  :global(.target-lines) {
-    pointer-events: none;
-  }
-</style>

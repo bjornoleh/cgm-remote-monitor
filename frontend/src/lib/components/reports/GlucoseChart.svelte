@@ -1,35 +1,52 @@
 <script lang="ts">
-  import {
-    Area,
-    Axis,
-    Highlight,
-    Points,
-    ScatterChart,
-    Svg,
-    Threshold,
-    Tooltip,
-  } from "layerchart";
-  import { scaleTime, scaleLinear, scaleThreshold } from "d3-scale";
-  import type { Thresholds, ChartDataItem } from "./types";
+  import { ScatterChart } from "layerchart";
+  import { scaleTime, scaleThreshold } from "d3-scale";
+  import type { Thresholds } from "./types";
+  import type { Entry, Treatment } from "$lib";
   import { TIR_COLORS_CSS } from "$lib/constants";
-  import * as Chart from "$lib/components/ui/Chart/index.js";
+  import * as Chart from "$lib/components/ui/chart/index.js";
 
   interface Props {
-    chartData: ChartDataItem[];
+    entries: Entry[];
+    treatments: Treatment[];
     date: string; // YYYY-MM-DD
     thresholds: Thresholds;
   }
 
-  let { chartData, date, thresholds }: Props = $props();
+  let { entries, treatments, date, thresholds }: Props = $props();
+  // Combine entries and treatments into chart data
+  const chartData = $derived(() => {
+    const data: any[] = [];
 
-  function formatTimeForTooltip(d: Date): string {
-    return d.toLocaleTimeString(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  }
+    // Add glucose entries
+    for (const entry of entries) {
+      if (entry.sgv || entry.mgdl) {
+        data.push({
+          timestamp: entry.date,
+          glucoseValue: entry.sgv || entry.mgdl || 0,
+          _id: entry._id,
+          type: "glucose" as const,
+        });
+      }
+    }
 
+    // Add treatments
+    for (const treatment of treatments) {
+      const timestamp = new Date(treatment.timestamp).getTime();
+      data.push({
+        timestamp,
+        glucoseValue: 0, // Treatments don't have glucose values, will be positioned at bottom
+        _id: treatment._id,
+        type: "treatment" as const,
+        eventType: treatment.eventType,
+        insulin: treatment.insulin,
+        carbs: treatment.carbs,
+        notes: treatment.notes,
+      });
+    }
+
+    return data.sort((a, b) => a.timestamp - b.timestamp);
+  });
   const xScale = $derived(
     scaleTime().domain([
       new Date(date + "T00:00:00").getTime(),
@@ -44,7 +61,7 @@
 
 <Chart.Container config={chartConfig} class="h-72 md:h-96">
   <ScatterChart
-    data={chartData}
+    data={chartData()}
     x="timestamp"
     y="glucoseValue"
     c="glucoseValue"
@@ -75,7 +92,10 @@
         label: `High (${thresholds.bgHigh})`,
         props: {
           label: { class: "text-xs" },
-          line: { class: "[stroke-dasharray:2,2] stroke-high-bg" },
+          line: {
+            class: "[stroke-dasharray:2,2] stroke-high-bg",
+            color: "var(--high-bg)",
+          },
         },
       },
       {

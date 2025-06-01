@@ -1,6 +1,6 @@
 import type { PageServerLoad } from "./$types";
 import { apiGet } from '$lib/api';
-import type { SGVEntry, TimeInRanges } from '$lib/types/nightscout';
+import type { SGVEntry, TimeInRanges } from '$lib';
 import { analyzeGlucoseData } from '$lib/utils/glucose-analytics';
 
 interface DayStats {

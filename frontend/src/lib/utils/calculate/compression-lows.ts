@@ -1,4 +1,4 @@
-import type { Entry } from '../../../app.d.ts';
+import type { Entry } from '$lib';
 import type { AnalysisConfig } from './time-in-range';
 
 /**

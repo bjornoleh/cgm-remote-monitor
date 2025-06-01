@@ -1,50 +1,19 @@
 import type { PageServerLoad } from "./$types";
 import { apiGet } from "$lib/api";
 import type { SGVEntry } from "$lib/types/nightscout";
-import { calculateBasicStats } from '$lib/utils/calculate/basic-stats';
-import { calculateTimeInRange, DEFAULT_THRESHOLDS, type TimeInRangeMetrics, type AnalysisConfig } from '$lib/utils/calculate/time-in-range';
-import { calculateTreatmentSummary } from '$lib/utils/calculate/treatment-stats';
-import type { Entry } from '../../../app.d.ts';
+import { analyzeGlucoseData, type GlucoseAnalytics } from '$lib/utils/glucose-analytics';
+import { calculateTreatmentSummary, type TreatmentSummary } from '$lib/utils/calculate/treatment-stats';
+import type { Entry, Treatment, SGVDirection } from '$lib';
+import type { TranslationKey } from '../../../../lib/language';
 
 interface DayToDayData {
   date: string;
-  averageGlucose: number;
-  minGlucose: number;
-  maxGlucose: number;
-  stdDev: number;
-  timeInRanges: TimeInRangeMetrics;
+  analytics: GlucoseAnalytics;
   readingsCount: number;
   trend: "rising" | "falling" | "stable";
-  glucoseData: Array<{
-    timestamp: number;
-    glucoseValue: number;
-    date: Date;
-    timeString: string;
-    _id: string;
-  }>;
-  treatments: Array<{
-    timestamp: number;
-    glucoseContext: number; // For positioning on chart
-    eventType: string;
-    insulin?: number;
-    carbs?: number;
-    protein?: number;
-    fat?: number;
-    notes?: string;
-    _id: string;
-  }>;
-  treatmentSummary: {
-    totalInsulin: number;
-    totalCarbs: number;
-    totalProtein: number;
-    totalFat: number;
-    bolusInsulin: number;
-    basalInsulin: number;
-    treatmentCount: number;
-    bolusCount: number;
-    basalEvents: number;
-    mealEvents: number;
-  };
+  glucoseData: Entry[];
+  treatments: Treatment[];
+  treatmentSummary: TreatmentSummary;
 }
 
 /**
@@ -53,53 +22,15 @@ interface DayToDayData {
 function convertToEntries(readings: SGVEntry[]): Entry[] {
   return readings.map(reading => ({
     _id: reading._id,
-    type: reading.type,
+    type: "sgv" as const,
     sgv: reading.sgv,
     mills: reading.date,
-    date: reading.date
+    date: new Date(reading.date),
+    mgdl: reading.sgv
   }));
 }
 
-/** Calculate time in ranges from glucose readings using utility functions */
-function calculateTimeInRanges(readings: SGVEntry[]): TimeInRangeMetrics {
-  if (readings.length === 0) {
-    return {
-      percentages: { severeLow: 0, low: 0, target: 0, high: 0, severeHigh: 0 },
-      durations: { severeLow: 0, low: 0, target: 0, high: 0, severeHigh: 0 },
-      episodes: { severeLow: 0, low: 0, high: 0, severeHigh: 0 }
-    };
-  }
-
-  // Use the standardized time in range calculation
-  const entries = convertToEntries(readings);
-  const tirConfig: AnalysisConfig = {
-    thresholds: DEFAULT_THRESHOLDS,
-    sensorType: 'GENERIC_5MIN' as const
-  };
-  const tirMetrics = calculateTimeInRange(entries, tirConfig);
-
-  return tirMetrics;
-}
-
-/** Calculate average glucose from readings using utility functions */
-function calculateAverageGlucose(readings: SGVEntry[]): number {
-  if (readings.length === 0) return 0;
-
-  const glucoseValues = readings.map(reading => reading.sgv);
-  const stats = calculateBasicStats(glucoseValues);
-  return Math.round(stats.mean);
-}
-
-/** Calculate standard deviation of glucose readings using utility functions */
-function calculateStandardDeviation(readings: SGVEntry[]): number {
-  if (readings.length === 0) return 0;
-
-  const glucoseValues = readings.map(reading => reading.sgv);
-  const stats = calculateBasicStats(glucoseValues);
-  return Math.round(stats.standardDeviation);
-}
-
-/** Determine glucose trend based on recent readings */
+/** Improved glucose trend calculation using recent readings */
 function calculateTrend(readings: SGVEntry[]): "rising" | "falling" | "stable" {
   if (readings.length < 3) return "stable";
 
@@ -155,7 +86,6 @@ async function processDayData(
       count: "1000",
     },
   });
-
   if (
     !sgvResponse.success ||
     !sgvResponse.data ||
@@ -164,120 +94,133 @@ async function processDayData(
     // Return default values if no data
     return {
       date: date.toISOString().split("T")[0], // Return just the date part (YYYY-MM-DD)
-      averageGlucose: 0,
-      minGlucose: 0,
-      maxGlucose: 0,
-      stdDev: 0,      timeInRanges: {
-        percentages: { severeLow: 0, low: 0, target: 0, high: 0, severeHigh: 0 },
-        durations: { severeLow: 0, low: 0, target: 0, high: 0, severeHigh: 0 },
-        episodes: { severeLow: 0, low: 0, high: 0, severeHigh: 0 }
+      analytics: {
+        basicStats: {
+          count: 0,
+          mean: 0,
+          median: 0,
+          min: 0,
+          max: 0,
+          standardDeviation: 0,
+          percentiles: { p5: 0, p10: 0, p25: 0, p75: 0, p90: 0, p95: 0 }
+        },
+        timeInRange: {
+          percentages: { severeLow: 0, low: 0, target: 0, high: 0, severeHigh: 0 },
+          durations: { severeLow: 0, low: 0, target: 0, high: 0, severeHigh: 0 },
+          episodes: { severeLow: 0, low: 0, high: 0, severeHigh: 0 }
+        },
+        glycemicVariability: {
+          coefficientOfVariation: 0,
+          standardDeviation: 0,
+          meanAmplitudeGlycemicExcursions: 0,
+          continuousOverlappingNetGlycemicAction: 0,
+          averageDailyRiskRange: 0,
+          labilityIndex: 0,
+          jIndex: 0,
+          highBloodGlucoseIndex: 0,
+          lowBloodGlucoseIndex: 0,
+          glycemicVariabilityIndex: 0,
+          patientGlycemicStatus: 0
+        },
+        dataQuality: {
+          totalReadings: 0,
+          missingReadings: 0,
+          dataCompleteness: 0,
+          gapAnalysis: { gaps: [], longestGap: 0, averageGap: 0 },
+          noiseLevel: 0,
+          calibrationEvents: 0,
+          sensorWarmups: 0
+        }
       },
       readingsCount: 0,
       trend: "stable",
       glucoseData: [],
       treatments: [],
       treatmentSummary: {
-        totalInsulin: 0,
-        totalCarbs: 0,
-        totalProtein: 0,
-        totalFat: 0,
-        bolusInsulin: 0,
-        basalInsulin: 0,
+        totals: {
+          food: {
+            carbs: 0,
+            protein: 0,
+            fat: 0,
+          },
+          insulin: {
+            bolus: 0,
+            basal: 0,
+          },
+        },
         treatmentCount: 0,
-        bolusCount: 0,
-        basalEvents: 0,
-        mealEvents: 0,
       },
     };
   }
-
   const readings = sgvResponse.data;
   const treatments = treatmentResponse.success
     ? treatmentResponse.data || []
     : [];
-  const glucoseValues = readings.map((r) => r.sgv); // Process glucose data for chart
-  const glucoseData = readings.map((reading) => {
+
+  // Process glucose data for chart
+  const glucoseData: Entry[] = readings.map((reading): Entry => {
     // Use either mills or date field for timestamp
     const timestamp = reading.mills || reading.date;
-    const dateObj = new Date(timestamp);
     return {
-      timestamp,
-      glucoseValue: reading.sgv,
-      date: dateObj,
-      timeString: dateObj.toLocaleTimeString(undefined, {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      }),
       _id: reading._id,
+      type: "sgv" as const,
+      sgv: reading.sgv,
+      direction: reading.direction as SGVDirection,
+      mills: timestamp,
+      date: new Date(timestamp),
+      mgdl: reading.sgv,
     };
   });
 
-  // Process treatment data for chart overlay
-  const treatmentData = treatments.map((treatment) => {
-    const timestamp = treatment.mills || treatment.date;
-    return {
-      timestamp,
-      glucoseContext: 150, // Default middle glucose value for positioning
-      eventType: treatment.eventType || "Unknown",
-      insulin: treatment.insulin,
-      carbs: treatment.carbs,
-      protein: treatment.protein,
-      fat: treatment.fat,
-      notes: treatment.notes,
-      _id: treatment._id,
-    };
+  // Convert to Entry format for comprehensive analytics
+  const entriesForAnalytics = convertToEntries(readings);
+
+  // Use comprehensive glucose analytics instead of individual calculations
+  const analytics = analyzeGlucoseData(entriesForAnalytics, [], {
+    thresholds: {
+      severeLow: 54,
+      low: 70,
+      targetLow: 70,
+      targetHigh: 180,
+      high: 180,
+      severeHigh: 250
+    },
+    sensorType: 'GENERIC_5MIN',
+    includeLoopingMetrics: false,
+    units: 'mg/dl'
   });
+
   // Calculate treatment summary
   console.log(
     `Processing ${treatments.length} treatments for ${date.toISOString().split("T")[0]}`
   );
-  console.log("Sample treatments:", treatments.slice(0, 3));  // Calculate treatment summary using utility function
-  // First, convert treatments to the expected format
-  const formattedTreatments = treatments.map(t => ({
-    ...t,
-    timestamp: (t.date || t.mills).toString()
+  console.log("Sample treatments:", treatments.slice(0, 3));
+
+  // Convert server treatment data to the format expected by calculateTreatmentSummary
+  const adaptedTreatments: Treatment[] = treatments.map(treatment => ({
+    ...treatment,
+    created_at: new Date(treatment.mills).toISOString(),
+    mgdl: 0, // Not used in treatment summary calculations
+    endmills: treatment.mills,
+    profile: "", // Not used in treatment summary calculations
+    targetTop: 0, // Not used in treatment summary calculations
+    targetBottom: 0, // Not used in treatment summary calculations
+    mills: treatment.mills,
+    eventType: treatment.eventType as TranslationKey // Type assertion for compatibility
   }));
 
-  const treatmentSummary = calculateTreatmentSummary(formattedTreatments);
-  // Add additional metrics for compatibility with existing interface
-  const extendedTreatmentSummary = {
-    ...treatmentSummary,
-    treatmentCount: treatmentSummary.treatmentCount ||
-      (treatmentSummary.bolusInsulin > 0 ? 1 : 0) +
-      (treatmentSummary.totalCarbs > 0 ? 1 : 0),
-    bolusCount: treatments.filter(
-      (t) =>
-        t.eventType &&
-        (t.eventType.includes("Bolus") || (t.insulin && t.insulin > 0))
-    ).length,
-    basalEvents: treatments.filter(
-      (t) => t.eventType && t.eventType.includes("Basal")
-    ).length,
-    mealEvents: treatments.filter(
-      (t) =>
-        t.eventType &&
-        (t.eventType.includes("Meal") ||
-          t.eventType.includes("Snack") ||
-          (t.carbs && t.carbs > 0))
-    ).length,
-  };
-
-  console.log("Treatment summary:", extendedTreatmentSummary);
+  const treatmentSummary = calculateTreatmentSummary(adaptedTreatments);
+  console.log("Treatment summary:", treatmentSummary);
   console.log("---");
 
   return {
     date: date.toISOString().split("T")[0], // Return just the date part (YYYY-MM-DD)
-    averageGlucose: calculateAverageGlucose(readings),
-    minGlucose: Math.min(...glucoseValues),
-    maxGlucose: Math.max(...glucoseValues),
-    stdDev: calculateStandardDeviation(readings),
-    timeInRanges: calculateTimeInRanges(readings),
+    analytics,
     readingsCount: readings.length,
     trend: calculateTrend(readings),
     glucoseData,
-    treatments: treatmentData,
-    treatmentSummary: extendedTreatmentSummary,
+    treatments: adaptedTreatments,
+    treatmentSummary: treatmentSummary,
   };
 }
 
@@ -323,8 +266,7 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
         dateRange: {
           from: startDate.toLocaleDateString(),
           to: endDate.toLocaleDateString(),
-        },
-        dailyData,
+        },        dailyData,
         totalDays: dailyData.length,
         totalReadings: dailyData.reduce(
           (sum, day) => sum + day.readingsCount,

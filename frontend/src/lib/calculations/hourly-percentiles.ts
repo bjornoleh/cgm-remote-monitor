@@ -1,5 +1,5 @@
 import { apiGet } from '$lib/api';
-import type { SGVEntry } from '$lib/types/nightscout';
+import type { SGVEntry } from '$lib';
 import { percentile } from './statistics.js';
 
 export interface HourlyPercentileData {

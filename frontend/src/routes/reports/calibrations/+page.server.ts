@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { apiGet } from '$lib/api';
-import type { CalibrationEntry, MBGEntry, SGVEntry } from '$lib/types/nightscout';
+import type { CalibrationEntry, MBGEntry, SGVEntry } from '$lib';
 
 interface CalibrationEvent {
   id: string;

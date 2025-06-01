@@ -1,17 +1,16 @@
 <script lang="ts">
   import type { PageData } from "./$types";
   import * as Card from "$lib/components/ui/card";
-  import * as Table from "$lib/components/ui/table";
   import { Button } from "$lib/components/ui/button";
   import { Calendar, Download, RefreshCw } from "lucide-svelte";
   import WeeklyGlucosePercentileChart from "$lib/components/reports/WeeklyGlucosePercentileChart.svelte";
-  import { TIR_COLORS_RGB } from "$lib/constants/tir-colors";
 
   let { data }: { data: PageData } = $props();
-
   const reportData = $derived(data.success ? data.data : null);
-  const weeklyPercentileData = $derived(reportData?.weeklyPercentileData || []);
+  const hourlyStats = $derived(reportData?.hourlyStats || []);
   const dateRange = $derived(reportData?.dateRange);
+  const tirMetrics = $derived(reportData?.tirMetrics);
+  const glucoseMetrics = $derived(reportData?.glucoseMetrics);
 
   // Format date range for display
   const formatDateRange = (range: any) => {
@@ -28,55 +27,61 @@
     });
     return `${from} - ${to}`;
   };
-
-  // Calculate summary statistics
+  // Calculate summary statistics from hourly data
   const summaryStats = $derived.by(() => {
-    if (weeklyPercentileData.length === 0) {
+    if (hourlyStats.length === 0) {
       return {
-        totalWeeks: 0,
+        totalHours: 0,
         avgMedian: 0,
         avgTimeInRange: 0,
         avgHigh: 0,
         avgLow: 0,
+        totalReadings: 0,
       };
     }
-    const avgMedian =
-      weeklyPercentileData.reduce((sum, week) => sum + week.median, 0) /
-      weeklyPercentileData.length;
-    const avgP25 =
-      weeklyPercentileData.reduce((sum, week) => sum + week.p25, 0) /
-      weeklyPercentileData.length;
-    const avgP75 =
-      weeklyPercentileData.reduce((sum, week) => sum + week.p75, 0) /
-      weeklyPercentileData.length;
-    const avgHigh =
-      weeklyPercentileData.reduce((sum, week) => sum + week.p90, 0) /
-      weeklyPercentileData.length;
-    const avgLow =
-      weeklyPercentileData.reduce((sum, week) => sum + week.p10, 0) /
-      weeklyPercentileData.length;
 
-    // Estimate time in range based on 25th-75th percentiles being in target range
-    const avgTimeInRange = ((avgP75 - avgP25) / (avgHigh - avgLow)) * 50; // Rough estimation
+    const validHours = hourlyStats.filter((h) => h.readingsCount > 0);
+    if (validHours.length === 0) {
+      return {
+        totalHours: 0,
+        avgMedian: 0,
+        avgTimeInRange: 0,
+        avgHigh: 0,
+        avgLow: 0,
+        totalReadings: 0,
+      };
+    }
+
+    const avgMedian =
+      validHours.reduce((sum, hour) => sum + hour.median, 0) /
+      validHours.length;
+    const avgLow =
+      validHours.reduce((sum, hour) => sum + hour.min, 0) / validHours.length;
+    const avgHigh =
+      validHours.reduce((sum, hour) => sum + hour.max, 0) / validHours.length;
+    const totalReadings = hourlyStats.reduce(
+      (sum, hour) => sum + hour.readingsCount,
+      0
+    );
+
+    // Use server-calculated TIR instead of problematic estimation
+    const avgTimeInRange = tirMetrics?.percentages?.target
+      ? Math.round(tirMetrics.percentages.target)
+      : 0; // Fallback to 0 if TIR data not available
 
     return {
-      totalWeeks: weeklyPercentileData.length,
+      totalHours: validHours.length,
       avgMedian: Math.round(avgMedian),
-      avgTimeInRange: Math.round(Math.max(0, Math.min(100, avgTimeInRange))),
+      avgTimeInRange,
       avgHigh: Math.round(avgHigh),
       avgLow: Math.round(avgLow),
+      totalReadings,
     };
   });
-
-  const chartData = $derived(weeklyPercentileData);
 </script>
 
 <svelte:head>
-  <title>Weekly Overview Report - Nightscout</title>
-  <meta
-    name="description"
-    content="Weekly glucose percentile distribution and overview analysis"
-  />
+  <title>Weekly Overview</title>
 </svelte:head>
 
 <div class="container mx-auto px-4 py-6 space-y-8">
@@ -85,9 +90,9 @@
     class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
   >
     <div>
-      <h1 class="text-3xl font-bold">Weekly Overview Report</h1>
+      <h1 class="text-3xl font-bold">Weekly Overview</h1>
       <p class="text-muted-foreground">
-        Glucose percentile distribution and trends over time
+        Insights taken from average data across the week.
       </p>
       {#if dateRange}
         <p class="text-sm text-muted-foreground mt-1">
@@ -108,16 +113,25 @@
       </Button>
     </div>
   </div>
-
   <!-- Summary Cards -->
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
     <Card.Root>
       <Card.Header class="pb-2">
-        <Card.Title class="text-sm font-medium">Total Weeks</Card.Title>
+        <Card.Title class="text-sm font-medium">Hours with Data</Card.Title>
       </Card.Header>
       <Card.Content>
-        <div class="text-2xl font-bold">{summaryStats.totalWeeks}</div>
-        <p class="text-xs text-muted-foreground">Data periods</p>
+        <div class="text-2xl font-bold">{summaryStats.totalHours}</div>
+        <p class="text-xs text-muted-foreground">of 24 hours</p>
+      </Card.Content>
+    </Card.Root>
+
+    <Card.Root>
+      <Card.Header class="pb-2">
+        <Card.Title class="text-sm font-medium">Total Readings</Card.Title>
+      </Card.Header>
+      <Card.Content>
+        <div class="text-2xl font-bold">{summaryStats.totalReadings}</div>
+        <p class="text-xs text-muted-foreground">glucose values</p>
       </Card.Content>
     </Card.Root>
 
@@ -130,52 +144,40 @@
         <p class="text-xs text-muted-foreground">mg/dL</p>
       </Card.Content>
     </Card.Root>
-
     <Card.Root>
       <Card.Header class="pb-2">
-        <Card.Title class="text-sm font-medium">Est. TIR</Card.Title>
+        <Card.Title class="text-sm font-medium">Time in Range</Card.Title>
       </Card.Header>
       <Card.Content>
         <div class="text-2xl font-bold text-green-600">
           {summaryStats.avgTimeInRange}%
         </div>
-        <p class="text-xs text-muted-foreground">Estimated</p>
+        <p class="text-xs text-muted-foreground">70-180 mg/dL</p>
       </Card.Content>
     </Card.Root>
 
     <Card.Root>
       <Card.Header class="pb-2">
-        <Card.Title class="text-sm font-medium">Avg High (90%)</Card.Title>
+        <Card.Title class="text-sm font-medium">Tight TIR</Card.Title>
       </Card.Header>
       <Card.Content>
-        <div class="text-2xl font-bold" style="color: {TIR_COLORS_RGB.high}">
-          {summaryStats.avgHigh}
+        <div class="text-2xl font-bold text-blue-600">
+          {tirMetrics?.percentages?.tightTarget
+            ? Math.round(tirMetrics.percentages.tightTarget)
+            : 0}%
         </div>
-        <p class="text-xs text-muted-foreground">mg/dL</p>
-      </Card.Content>
-    </Card.Root>
-
-    <Card.Root>
-      <Card.Header class="pb-2">
-        <Card.Title class="text-sm font-medium">Avg Low (10%)</Card.Title>
-      </Card.Header>
-      <Card.Content>
-        <div class="text-2xl font-bold" style="color: {TIR_COLORS_RGB.low}">
-          {summaryStats.avgLow}
-        </div>
-        <p class="text-xs text-muted-foreground">mg/dL</p>
+        <p class="text-xs text-muted-foreground">70-140 mg/dL</p>
       </Card.Content>
     </Card.Root>
   </div>
-
   <!-- Main Chart -->
   <Card.Root>
     <Card.Header>
-      <Card.Title>Weekly Glucose Percentile Distribution</Card.Title>
+      <Card.Title>24-Hour Glucose Percentile Distribution</Card.Title>
       <Card.Description>
-        Stacked area chart showing glucose distribution across percentiles over
-        time. Each layer represents a different percentile range from 10th to
-        90th percentile.
+        Percentile chart showing glucose distribution across hours of the day.
+        This shows how glucose levels vary throughout a typical 24-hour period
+        across different percentiles.
       </Card.Description>
     </Card.Header>
     <Card.Content>
@@ -188,144 +190,45 @@
             <p class="text-sm">{data.error || "Unknown error occurred"}</p>
           </div>
         </div>
-      {:else if chartData.length === 0}
-        <div
-          class="flex items-center justify-center h-[400px] text-muted-foreground"
-        >
-          <div class="text-center">
-            <p class="text-lg font-medium">No data available</p>
-            <p class="text-sm">
-              No glucose data found for the selected time period
-            </p>
+      {:else}
+        <WeeklyGlucosePercentileChart {hourlyStats} />
+        <div class="space-y-3">
+          <div class="flex items-start gap-3">
+            <div class="size-2 rounded-full bg-blue-500 mt-2"></div>
+            <div>
+              <p class="font-medium">24-Hour Percentile Distribution</p>
+              <p class="text-sm text-muted-foreground">
+                This chart shows how your glucose varies throughout each hour of
+                the day. The percentile bands (10th, 25th, 50th, 75th, 90th)
+                reveal patterns in glucose control at different times.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3">
+            <div class="size-2 rounded-full bg-green-500 mt-2"></div>
+            <div>
+              <p class="font-medium">Time-of-Day Patterns</p>
+              <p class="text-sm text-muted-foreground">
+                Look for consistent patterns - dawn phenomenon (early morning
+                highs), post-meal spikes, or overnight stability patterns.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3">
+            <div class="size-2 rounded-full bg-orange-500 mt-2"></div>
+            <div>
+              <p class="font-medium">Glucose Variability</p>
+              <p class="text-sm text-muted-foreground">
+                Wide bands between percentiles indicate higher glucose
+                variability at those times. Narrower bands suggest more
+                consistent glucose levels.
+              </p>
+            </div>
           </div>
         </div>
-      {:else}
-        <WeeklyGlucosePercentileChart data={weeklyPercentileData} />
       {/if}
     </Card.Content>
   </Card.Root>
-  <!-- Data Table -->
-  {#if data.success && chartData.length > 0}
-    <Card.Root>
-      <Card.Header>
-        <Card.Title>Weekly Percentile Data</Card.Title>
-        <Card.Description>
-          Detailed breakdown of glucose percentiles by week
-        </Card.Description>
-      </Card.Header>
-      <Card.Content>
-        <Table.Root>
-          <Table.Header>
-            <Table.Row>
-              <Table.Head class="text-left">Week Starting</Table.Head>
-              <Table.Head class="text-right">10th %ile</Table.Head>
-              <Table.Head class="text-right">25th %ile</Table.Head>
-              <Table.Head class="text-right">Median</Table.Head>
-              <Table.Head class="text-right">75th %ile</Table.Head>
-              <Table.Head class="text-right">90th %ile</Table.Head>
-              <Table.Head class="text-right">Range</Table.Head>
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
-            {#each chartData as week}
-              <Table.Row>
-                <Table.Cell>
-                  {week.date.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </Table.Cell>
-                <Table.Cell
-                  class="text-right"
-                  style="color: {TIR_COLORS_RGB.low}"
-                >
-                  {Math.round(week.p10)}
-                </Table.Cell>
-                <Table.Cell
-                  class="text-right"
-                  style="color: {TIR_COLORS_RGB.low}"
-                >
-                  {Math.round(week.p25)}
-                </Table.Cell>
-                <Table.Cell
-                  class="text-right font-medium"
-                  style="color: {TIR_COLORS_RGB.target}"
-                >
-                  {Math.round(week.median)}
-                </Table.Cell>
-                <Table.Cell
-                  class="text-right"
-                  style="color: {TIR_COLORS_RGB.high}"
-                >
-                  {Math.round(week.p75)}
-                </Table.Cell>
-                <Table.Cell
-                  class="text-right"
-                  style="color: {TIR_COLORS_RGB.high}"
-                >
-                  {Math.round(week.p90)}
-                </Table.Cell>
-                <Table.Cell class="text-right text-muted-foreground">
-                  {Math.round(week.p90 - week.p10)}
-                </Table.Cell>
-              </Table.Row>
-            {/each}
-          </Table.Body>
-        </Table.Root>
-      </Card.Content>
-    </Card.Root>
-  {/if}
-
-  <!-- Insights -->
-  <Card.Root>
-    <Card.Header>
-      <Card.Title>Key Insights</Card.Title>
-    </Card.Header>
-    <Card.Content>
-      <div class="space-y-3">
-        <div class="flex items-start gap-3">
-          <div class="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
-          <div>
-            <p class="font-medium">Percentile Distribution</p>
-            <p class="text-sm text-muted-foreground">
-              The chart shows your glucose distribution across different
-              percentiles over time. The middle band (25th-75th percentile)
-              represents the range where 50% of your readings fall.
-            </p>
-          </div>
-        </div>
-
-        <div class="flex items-start gap-3">
-          <div class="w-2 h-2 rounded-full bg-green-500 mt-2"></div>
-          <div>
-            <p class="font-medium">Target Range Analysis</p>
-            <p class="text-sm text-muted-foreground">
-              The green shaded area represents the target glucose range (70-180
-              mg/dL). More overlap with the middle percentiles indicates better
-              glucose control.
-            </p>
-          </div>
-        </div>
-
-        <div class="flex items-start gap-3">
-          <div class="w-2 h-2 rounded-full bg-amber-500 mt-2"></div>
-          <div>
-            <p class="font-medium">Variability Tracking</p>
-            <p class="text-sm text-muted-foreground">
-              Week-to-week changes in the percentile bands help identify
-              patterns and the effectiveness of treatment adjustments.
-            </p>
-          </div>
-        </div>
-      </div>
-    </Card.Content>
-  </Card.Root>
 </div>
-
-<style>
-  /* Custom styles for better readability */
-  table {
-    font-variant-numeric: tabular-nums;
-  }
-</style>

@@ -1,6 +1,9 @@
 import type { PageServerLoad } from "./$types";
-import type { Entry } from "../../../app.d.ts";
-import { calculateBasicStats, extractGlucoseValues, type BasicGlucoseStats } from "$lib/utils/calculate/basic-stats.js";
+import { processHourlyStats } from "$lib/calculations/hourly-stats.js";
+import { apiGet } from "$lib/api.js";
+import { analyzeGlucoseData, DEFAULT_THRESHOLDS } from "$lib/utils/glucose-analytics.js";
+import type { SGVEntry } from "$lib/types/nightscout.js";
+import type { Entry } from "$lib/app.d.ts";
 
 export const load: PageServerLoad = async ({ fetch, url }) => {
   const fetchData = async () => {
@@ -34,12 +37,63 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
       startDate.setHours(0, 0, 0, 0);
       endDate.setHours(23, 59, 59, 999);
 
-      const weeklyData = await processWeeklyPercentileData(fetch, startDate, endDate);
-      console.log('Weekly overview data loaded:', weeklyData);
+      // Process hourly statistics for the date range
+      const { hourlyStats } = await processHourlyStats(fetch, startDate, endDate);
+
+      // Fetch SGV data for proper TIR calculations
+      const sgvResponse = await apiGet<SGVEntry[]>(fetch, '/api/v1/entries.json', {
+        params: {
+          'find[type]': 'sgv',
+          'find[date][$gte]': startDate.getTime().toString(),
+          'find[date][$lte]': endDate.getTime().toString(),
+          count: '10000'
+        }
+      });
+
+      let tirMetrics = null;
+      let glucoseMetrics = null;
+
+      if (sgvResponse.success && sgvResponse.data && sgvResponse.data.length > 0) {
+        // Convert SGV entries to Entry format for analytics
+        const entries: Entry[] = sgvResponse.data.map(reading => ({
+          _id: reading._id,
+          type: reading.type,
+          sgv: reading.sgv,
+          mills: reading.mills || reading.date,
+          date: reading.date || reading.mills,
+          direction: reading.direction,
+          dateString: reading.dateString
+        }));
+
+        // Use proper glucose analytics for TIR calculation
+        const analytics = analyzeGlucoseData(entries, [], {
+          thresholds: DEFAULT_THRESHOLDS,
+          sensorType: 'GENERIC_5MIN',
+          includeLoopingMetrics: false,
+          units: 'mg/dl'
+        });
+
+        tirMetrics = analytics.timeInRange;
+        glucoseMetrics = {
+          totalReadings: analytics.basicStats.count,
+          averageGlucose: Math.round(analytics.basicStats.mean),
+          standardDeviation: Math.round(analytics.basicStats.standardDeviation),
+          percentiles: analytics.basicStats.percentiles
+        };        console.log('TIR Analytics calculated:', {
+          timeInRange: tirMetrics.percentages.target,
+          tightTimeInRange: tirMetrics.percentages.tightTarget,
+          totalReadings: glucoseMetrics.totalReadings,
+          averageGlucose: glucoseMetrics.averageGlucose
+        });
+      }
+
+      console.log('Hourly percentile data loaded:', hourlyStats.length, 'hours');
       return {
         success: true,
         data: {
-          weeklyPercentileData: weeklyData,
+          hourlyStats,
+          tirMetrics,
+          glucoseMetrics,
           dateRange: {
             from: startDate,
             to: endDate
@@ -58,58 +112,4 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
   return await fetchData();
 };
 
-// Process weekly percentile data
-async function processWeeklyPercentileData(
-  fetch: typeof globalThis.fetch,
-  startDate: Date,
-  endDate: Date
-): Promise<(BasicGlucoseStats & { date: Date })[]> {
-  // Build API query parameters using proper Nightscout API format
-  const params = new URLSearchParams({
-    'find[date][$gte]': startDate.getTime().toString(),
-    'find[date][$lt]': endDate.getTime().toString(),
-    count: '50000'
-  });
 
-  // Fetch glucose entries
-  const entriesResponse = await fetch(`/api/v1/entries.json?${params}`);
-  if (!entriesResponse.ok) {
-    throw new Error(`Failed to fetch entries: ${entriesResponse.statusText}`);
-  }
-  const entries: Entry[] = await entriesResponse.json();
-
-  // Group data by week and calculate percentiles
-  const weeklyData: (BasicGlucoseStats & { date: Date })[] = [];
-  const oneWeek = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-
-  let currentWeekStart = new Date(startDate);
-
-  while (currentWeekStart <= endDate) {
-    const weekEnd = new Date(Math.min(currentWeekStart.getTime() + oneWeek - 1, endDate.getTime()));
-
-    // Filter entries for this week
-    const weekEntries = entries.filter((entry: Entry) => {
-      const entryDate = new Date(entry.date);
-      return entryDate >= currentWeekStart && entryDate <= weekEnd;
-    });
-
-    // Extract glucose values using the utility function
-    const glucoseValues = extractGlucoseValues(weekEntries);
-
-    if (glucoseValues.length > 0) {
-      // Use calculateBasicStats to get all percentiles in one calculation
-      const stats = calculateBasicStats(glucoseValues);
-
-      weeklyData.push(Object.assign({
-
-        ...stats,
-        date: new Date(currentWeekStart)
-      }));
-    }
-
-    // Move to next week
-    currentWeekStart = new Date(currentWeekStart.getTime() + oneWeek);
-  }
-
-  return weeklyData;
-}

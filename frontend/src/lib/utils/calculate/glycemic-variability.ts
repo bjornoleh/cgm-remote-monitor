@@ -1,4 +1,4 @@
-import type { Entry } from '../../../app.d.ts';
+import type { Entry } from '$lib';
 import { SENSOR_SPECS } from './time-in-range';
 
 /**

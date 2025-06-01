@@ -58,9 +58,11 @@ export interface HourlyStats {
   readingsCount: number;
   average: number;
   min: number;
+  p10: number;
   quartile25: number;
   median: number;
   quartile75: number;
+  p90: number;
   max: number;
   standardDeviation: number;
   basalIob: number;

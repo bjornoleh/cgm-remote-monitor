@@ -4,17 +4,24 @@
  * and overall treatment statistics based on existing patterns from bolus calculator and treatment processing code.
  */
 
+import type { Treatment } from '$lib';
 import type { TimeInRangeMetrics } from './time-in-range';
 
+/** A summary of treatments over an indeterminate amount of time. */
 export interface TreatmentSummary {
   totals: {
     food: {
+      /** Total carbs in grams */
       carbs: number;
+      /** Total protein in grams */
       protein: number;
+      /** Total fat in grams */
       fat: number;
     };
     insulin: {
+      /** in U of insulin */
       bolus: number;
+      /** in U of insulin */
       basal: number;
     };
   };
@@ -32,21 +39,6 @@ export interface OverallAverages {
   avgFat: number;
   avgTimeInRange: number;
   avgTightTimeInRange: number;
-}
-
-export interface Treatment {
-  timestamp: number | string;
-  eventType?: string;
-  insulin?: number;
-  carbs?: number;
-  protein?: number;
-  fat?: number;
-  duration?: number;
-  percent?: number;
-  absolute?: number;
-  notes?: string;
-  _id: string;
-  glucoseContext?: number;
 }
 
 export interface DayData {
@@ -225,14 +217,14 @@ export function formatInsulinDisplay(value: number): string {
  * Formats carb values for display with appropriate precision
  */
 export function formatCarbDisplay(value: number): string {
-  return value.toFixed(1);
+  return value?.toFixed(1);
 }
 
 /**
  * Formats percentage values for display
  */
 export function formatPercentageDisplay(value: number): string {
-  return value.toFixed(1);
+  return value?.toFixed(1);
 }
 
 /**
@@ -275,47 +267,7 @@ export function cleanTreatmentData(treatments: Treatment[]): Treatment[] {
     .map((treatment) => ({
       ...treatment,
       insulin: treatment.insulin ? Number(treatment.insulin) : undefined,
-      carbs: treatment.carbs ? Number(treatment.carbs) : undefined,
-      protein: treatment.protein ? Number(treatment.protein) : undefined,
+      carbs: treatment.carbs ? Number(treatment.carbs) : undefined,    protein: treatment.protein ? Number(treatment.protein) : undefined,
       fat: treatment.fat ? Number(treatment.fat) : undefined,
     }));
-}
-
-/**
- * Legacy treatment summary structure from server
- */
-export interface LegacyTreatmentSummary {
-  totalInsulin: number;
-  totalCarbs: number;
-  totalProtein: number;
-  totalFat: number;
-  bolusCount: number;
-  mealEvents: number;
-  bolusInsulin?: number;
-  basalInsulin?: number;
-  treatmentCount?: number;
-}
-
-/**
- * Converts legacy treatment summary to new structured format
- */
-export function convertLegacyTreatmentSummary(legacy: LegacyTreatmentSummary): TreatmentSummary {
-  // Calculate bolus and basal if not provided
-  const bolusInsulin = legacy.bolusInsulin ?? 0;
-  const basalInsulin = legacy.basalInsulin ?? Math.max(0, legacy.totalInsulin - bolusInsulin);
-
-  return {
-    totals: {
-      food: {
-        carbs: legacy.totalCarbs,
-        protein: legacy.totalProtein,
-        fat: legacy.totalFat,
-      },
-      insulin: {
-        bolus: bolusInsulin,
-        basal: basalInsulin,
-      },
-    },
-    treatmentCount: legacy.treatmentCount ?? (legacy.bolusCount + legacy.mealEvents),
-  };
 }

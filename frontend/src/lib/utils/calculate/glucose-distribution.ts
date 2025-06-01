@@ -1,4 +1,4 @@
-import type { Entry } from '../../../app.d.ts';
+import type { Entry } from '$lib';
 import { calculateMean } from './basic-stats.ts';
 
 /**
@@ -48,51 +48,12 @@ export function calculateEstimatedHbA1C(values: number[]): string {
   return a1c.toFixed(1);
 }
 
-
-
 /**
- * Calculate glucose distribution from readings using configurable bins
+ * Internal helper function to calculate distribution from glucose values
  */
-export function calculateGlucoseDistribution(
-  entries: Entry[],
-  bins: DistributionBin[] = DEFAULT_DISTRIBUTION_BINS
-): DistributionDataPoint[] {
-  if (entries.length === 0) {
-    return [];
-  }
-
-  // Extract glucose values (handling different entry formats)
-  const readings = entries
-    .map(entry => entry.sgv || entry.mgdl || 0)
-    .filter(value => value > 0 && value < 1000); // Filter out invalid readings
-
-  if (readings.length === 0) {
-    return [];
-  }
-
-  // Count readings in each bin
-  const counts = bins.map(bin => ({
-    range: bin.range,
-    count: readings.filter(reading => reading >= bin.min && reading <= bin.max).length,
-    percent: 0
-  }));
-
-  // Calculate percentages
-  const total = readings.length;
-  counts.forEach(bin => {
-    bin.percent = total > 0 ? Math.round((bin.count / total) * 100 * 10) / 10 : 0;
-  });
-
-  // Filter out empty bins
-  return counts.filter(bin => bin.count > 0);
-}
-
-/**
- * Calculate glucose distribution from raw glucose values
- */
-export function calculateGlucoseDistributionFromValues(
+function calculateDistributionFromValues(
   glucoseValues: number[],
-  bins: DistributionBin[] = DEFAULT_DISTRIBUTION_BINS
+  bins: DistributionBin[]
 ): DistributionDataPoint[] {
   if (glucoseValues.length === 0) {
     return [];
@@ -120,4 +81,27 @@ export function calculateGlucoseDistributionFromValues(
 
   // Filter out empty bins
   return counts.filter(bin => bin.count > 0);
+}
+
+/**
+ * Calculate glucose distribution from readings using configurable bins
+ */
+export function calculateGlucoseDistribution(
+  entries: Entry[],
+  bins: DistributionBin[] = DEFAULT_DISTRIBUTION_BINS
+): DistributionDataPoint[] {
+  // Extract glucose values (handling different entry formats)
+  const glucoseValues = entries.map(entry => entry.sgv || entry.mgdl || 0);
+
+  return calculateDistributionFromValues(glucoseValues, bins);
+}
+
+/**
+ * Calculate glucose distribution from raw glucose values
+ */
+export function calculateGlucoseDistributionFromValues(
+  glucoseValues: number[],
+  bins: DistributionBin[] = DEFAULT_DISTRIBUTION_BINS
+): DistributionDataPoint[] {
+  return calculateDistributionFromValues(glucoseValues, bins);
 }

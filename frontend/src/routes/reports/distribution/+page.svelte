@@ -180,12 +180,7 @@
           xDomain={[40, 400]}
           yDomain={[0.5, 1.5]}
           padding={{ left: 60, right: 40, top: 20, bottom: 60 }}
-        >
-          <Svg>
-            <Axis placement="bottom" title="Glucose Level (mg/dL)" />
-            <Axis placement="left" title="" ticks={[]} />
-          </Svg>
-        </ScatterChart>
+        />
       </div>
       <p class="text-sm text-gray-600 mt-2">
         Point size represents the number of readings in each glucose range.

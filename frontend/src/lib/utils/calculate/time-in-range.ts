@@ -1,13 +1,16 @@
-import type { Entry } from '../../../app.d.ts';
+import type { Entry } from '$lib';
 
 /**
  * Time in Range metrics interface
  */
 export interface TimeInRangeMetrics {
+  /** @warn Because we have the `tightTarget` overlapping with target, this does NOT add up to 100%. */
   percentages: {
     severeLow: number;
     low: number;
     target: number;
+    /** Optional for tighter target ranges */
+    tightTarget?: number;
     high: number;
     severeHigh: number;
   };
@@ -15,6 +18,8 @@ export interface TimeInRangeMetrics {
     severeLow: number;
     low: number;
     target: number;
+    /** Optional for tighter target ranges */
+    tightTarget?: number;
     high: number;
     severeHigh: number;
   };
@@ -34,6 +39,8 @@ export interface GlycemicThresholds {
   low: number;
   targetLow: number;
   targetHigh: number;
+  tightTargetLow?: number;
+  tightTargetHigh?: number;
   high: number;
   severeHigh: number;
 }
@@ -46,6 +53,8 @@ export const DEFAULT_THRESHOLDS: GlycemicThresholds = {
   low: 70,
   targetLow: 70,
   targetHigh: 180,
+  tightTargetLow: 70,
+  tightTargetHigh: 140,
   high: 180,
   severeHigh: 250
 };
@@ -85,7 +94,7 @@ export function calculateTimeInRange(entries: Entry[], config: AnalysisConfig): 
   const { thresholds } = config;
   const sensorInterval = SENSOR_SPECS[config.sensorType as keyof typeof SENSOR_SPECS]?.interval || 5;
 
-  const counts = { severeLow: 0, low: 0, target: 0, high: 0, severeHigh: 0 };
+  const counts = { severeLow: 0, low: 0, target: 0, tightTarget: 0, high: 0, severeHigh: 0 };
   const episodes = { severeLow: 0, low: 0, high: 0, severeHigh: 0 };
   let currentEpisode: string | null = null;
 
@@ -99,6 +108,12 @@ export function calculateTimeInRange(entries: Entry[], config: AnalysisConfig): 
       range = 'low';
     } else if (value <= thresholds.targetHigh) {
       range = 'target';
+      // Also check if it's in tight target range (if thresholds are defined)
+      if (thresholds.tightTargetLow !== undefined && thresholds.tightTargetHigh !== undefined) {
+        if (value >= thresholds.tightTargetLow && value <= thresholds.tightTargetHigh) {
+          counts.tightTarget++;
+        }
+      }
     } else if (value <= thresholds.severeHigh) {
       range = 'high';
     } else {
@@ -119,7 +134,7 @@ export function calculateTimeInRange(entries: Entry[], config: AnalysisConfig): 
   }
 
   const totalReadings = entries.length;
-  const percentages = {
+  const percentages: TimeInRangeMetrics['percentages'] = {
     severeLow: Math.round((counts.severeLow / totalReadings) * 100 * 10) / 10,
     low: Math.round((counts.low / totalReadings) * 100 * 10) / 10,
     target: Math.round((counts.target / totalReadings) * 100 * 10) / 10,
@@ -127,13 +142,19 @@ export function calculateTimeInRange(entries: Entry[], config: AnalysisConfig): 
     severeHigh: Math.round((counts.severeHigh / totalReadings) * 100 * 10) / 10
   };
 
-  const durations = {
+  const durations: TimeInRangeMetrics['durations'] = {
     severeLow: counts.severeLow * sensorInterval,
     low: counts.low * sensorInterval,
     target: counts.target * sensorInterval,
     high: counts.high * sensorInterval,
     severeHigh: counts.severeHigh * sensorInterval
   };
+
+  // Add tight target metrics if thresholds are defined
+  if (thresholds.tightTargetLow !== undefined && thresholds.tightTargetHigh !== undefined) {
+    percentages.tightTarget = Math.round((counts.tightTarget / totalReadings) * 100 * 10) / 10;
+    durations.tightTarget = counts.tightTarget * sensorInterval;
+  }
 
   return { percentages, durations, episodes };
 }

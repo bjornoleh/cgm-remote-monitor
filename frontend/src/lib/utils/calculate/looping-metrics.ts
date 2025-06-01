@@ -1,4 +1,4 @@
-import type { Entry, Treatment } from '../../../app.d.ts';
+import type { Entry, Treatment } from '$lib';
 import { calculateBasicStats } from './basic-stats';
 
 // Extended interfaces for looping data that may not be in the base types

@@ -1,38 +1,7 @@
 // See https://svelte.dev/docs/kit/types#app
 // for information about these interfaces
 
-export interface Entry {
-	_id: string;
-	sgv?: number;
-	mgdl?: number;
-	direction?: string;
-	date: number;
-	mills: number;
-	type: string;
-	filtered?: number;
-	unfiltered?: number;
-	rssi?: number;
-	noise?: number;
-}
 
-export interface Treatment {
-	_id: string;
-	eventType: string;
-	created_at: string;
-	timestamp: string;
-	carbs?: number;
-	insulin?: number;
-	notes?: string;
-}
-
-export interface DeviceStatus {
-	_id: string;
-	device: string;
-	created_at: string;
-	pump?: Record<string, unknown>;
-	uploader?: Record<string, unknown>;
-	loop?: Record<string, unknown>;
-}
 
 export interface ServerSettings {
 	name: string;
@@ -44,7 +13,8 @@ export interface ServerSettings {
 	authorized?: Record<string, unknown>;
 }
 
-declare global {	namespace App {
+declare global {
+	namespace App {
 		// interface Error {}
 		// interface Locals {}
 

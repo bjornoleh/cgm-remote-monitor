@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { apiGet } from '$lib/api';
-import type { SGVEntry, TimeInRanges } from '$lib/types/nightscout';
+import type { SGVEntry, TimeInRanges } from '$lib';
 import { calculateGlucoseDistribution } from '$lib/utils/calculate/glucose-distribution';
 import { calculateTimeInRange, DEFAULT_THRESHOLDS, type TimeInRangeMetrics } from '$lib/utils/calculate/time-in-range';
 

@@ -11,7 +11,6 @@
   import {
     formatInsulinDisplay,
     getTotalInsulin,
-    convertLegacyTreatmentSummary,
   } from "$lib/utils/calculate/treatment-stats";
   import type { DayToDayDailyData, Thresholds } from "./types";
   import { getGlucoseColor } from "$lib/utils/glucose-analytics";
@@ -49,13 +48,12 @@
               month: "short",
               day: "numeric",
             })}
-          </TableCell>
-          <TableCell class={getGlucoseColor(entry.averageGlucose, thresholds)}>
-            {entry.averageGlucose || "N/A"}
+          </TableCell>          <TableCell class={getGlucoseColor(entry.analytics.basicStats.mean, thresholds)}>
+            {Math.round(entry.analytics.basicStats.mean) || "N/A"}
           </TableCell>
           <TableCell class="text-sm">
             {#if entry.readingsCount > 0}
-              <div>{entry.minGlucose} - {entry.maxGlucose}</div>
+              <div>{Math.round(entry.analytics.basicStats.min)} - {Math.round(entry.analytics.basicStats.max)}</div>
             {:else}
               N/A
             {/if}
@@ -64,31 +62,29 @@
             {entry.readingsCount}
           </TableCell>
           <TableCell>
-            {entry.stdDev ? `${entry.stdDev}` : "N/A"}
-          </TableCell>
-          <TableCell class="text-sm">
+            {entry.analytics.basicStats.standardDeviation ? `${Math.round(entry.analytics.basicStats.standardDeviation)}` : "N/A"}
+          </TableCell>          <TableCell class="text-sm">
             {#if entry.readingsCount > 0}
               <div class="text-green-600">
-                {entry.timeInRanges.percentages.target}% Target
+                {entry.analytics.timeInRange.percentages.target}% Target
               </div>
               <div class="text-blue-600">
-                {entry.timeInRanges.percentages.target > 85
-                  ? entry.timeInRanges.percentages.target
-                  : 0}% TTIR
+                {entry.analytics.timeInRange.percentages.tightTarget ?? 
+                 entry.analytics.timeInRange.percentages.target}% TTIR
               </div>
               <div class="text-xs text-gray-500">
                 ({thresholds.bgTargetBottom}-{thresholds.bgTightTargetTop} mg/dL)
               </div>
-              {#if entry.timeInRanges.percentages.low + entry.timeInRanges.percentages.severeLow > 0}
+              {#if entry.analytics.timeInRange.percentages.low + entry.analytics.timeInRange.percentages.severeLow > 0}
                 <div class="text-red-600">
-                  {entry.timeInRanges.percentages.low +
-                    entry.timeInRanges.percentages.severeLow}% Low
+                  {entry.analytics.timeInRange.percentages.low +
+                    entry.analytics.timeInRange.percentages.severeLow}% Low
                 </div>
               {/if}
-              {#if entry.timeInRanges.percentages.high + entry.timeInRanges.percentages.severeHigh > 0}
+              {#if entry.analytics.timeInRange.percentages.high + entry.analytics.timeInRange.percentages.severeHigh > 0}
                 <div class="text-orange-600">
-                  {entry.timeInRanges.percentages.high +
-                    entry.timeInRanges.percentages.severeHigh}% High
+                  {entry.analytics.timeInRange.percentages.high +
+                    entry.analytics.timeInRange.percentages.severeHigh}% High
                 </div>
               {/if}
             {:else}
@@ -96,16 +92,14 @@
             {/if}
           </TableCell>
           <TableCell class="text-right">
-            {@const structuredSummary = convertLegacyTreatmentSummary(
-              entry.treatmentSummary
-            )}
             <span class="font-medium">
-              {formatInsulinDisplay(getTotalInsulin(structuredSummary))}U
+              {formatInsulinDisplay(getTotalInsulin(entry.treatmentSummary))}U
             </span>
             <div class="text-xs text-gray-500">
-              B: {formatInsulinDisplay(structuredSummary.totals.insulin.bolus)}U
-              | Ba: {formatInsulinDisplay(
-                structuredSummary.totals.insulin.basal
+              B: {formatInsulinDisplay(
+                entry.treatmentSummary.totals.insulin.bolus
+              )}U | Ba: {formatInsulinDisplay(
+                entry.treatmentSummary.totals.insulin.basal
               )}U
             </div>
           </TableCell>

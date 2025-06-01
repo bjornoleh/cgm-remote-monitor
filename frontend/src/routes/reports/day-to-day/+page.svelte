@@ -26,23 +26,14 @@
     bgTightTargetTop: 140, // For tight time in range calculations
     bgHigh: clientState.settings?.thresholds?.bgHigh || 180,
     bgSevereHigh: clientState.settings?.thresholds?.bgSevereHigh || 250,
-  }));
-
-  // Prepare data for individual day charts
+  })); // Prepare data for individual day charts
   const dailyChartData = $derived(
     dailyDataPoints.map((day) => ({
       ...day,
-      chartData: day.glucoseData.map((reading) => ({
-        timestamp: reading.timestamp,
-        date: new Date(reading.timestamp),
-        glucoseValue: reading.glucoseValue,
-        timeString: reading.timeString,
-        _id: reading._id,
-      })),
       treatmentData: day.treatments.map((treatment) => ({
-        timestamp: treatment.timestamp,
-        date: new Date(treatment.timestamp),
-        glucoseValue: treatment.glucoseContext || 150,
+        timestamp: treatment.mills,
+        date: new Date(treatment.mills),
+        glucoseValue: 150, // Default middle glucose value for positioning
         eventType: treatment.eventType,
         insulin: treatment.insulin,
         carbs: treatment.carbs,
@@ -53,7 +44,6 @@
       })),
     }))
   );
-
   // Calculate overall averages - use server data directly
   const overallAverages = $derived.by(() => {
     if (dailyDataPoints.length === 0) return null;
@@ -61,22 +51,23 @@
     const totals = dailyDataPoints.reduce(
       (acc, day) => {
         const treatmentSummary = day.treatmentSummary;
-        const totalDailyInsulin = treatmentSummary.totalInsulin;
-        const bolusInsulin = treatmentSummary.bolusInsulin || 0;
-        const basalInsulin = treatmentSummary.basalInsulin || 0;
+        const bolusInsulin = treatmentSummary.totals.insulin.bolus;
+        const basalInsulin = treatmentSummary.totals.insulin.basal;
+        const totalDailyInsulin = bolusInsulin + basalInsulin;
 
         return {
           totalDailyInsulin: acc.totalDailyInsulin + totalDailyInsulin,
           bolusInsulin: acc.bolusInsulin + bolusInsulin,
           basalInsulin: acc.basalInsulin + basalInsulin,
-          totalCarbs: acc.totalCarbs + treatmentSummary.totalCarbs,
-          totalProtein: acc.totalProtein + treatmentSummary.totalProtein,
-          totalFat: acc.totalFat + treatmentSummary.totalFat,
-          timeInRange: acc.timeInRange + day.timeInRanges.percentages.target,
+          totalCarbs: acc.totalCarbs + treatmentSummary.totals.food.carbs,
+          totalProtein: acc.totalProtein + treatmentSummary.totals.food.protein,
+          totalFat: acc.totalFat + treatmentSummary.totals.food.fat,
+          timeInRange:
+            acc.timeInRange + day.analytics.timeInRange.percentages.target,
           tightTimeInRange:
             acc.tightTimeInRange +
-            (day.timeInRanges.percentages.target > 85
-              ? day.timeInRanges.percentages.target
+            (day.analytics.timeInRange.percentages.target > 85
+              ? day.analytics.timeInRange.percentages.target
               : 0),
           daysWithData: acc.daysWithData + (totalDailyInsulin > 0 ? 1 : 0),
         };
@@ -161,7 +152,8 @@
         </h2>
         {#if dayData.readingsCount > 0}
           <GlucoseChart
-            chartData={dayData.chartData}
+            entries={dayData.glucoseData}
+            treatments={dayData.treatments}
             date={dayData.date}
             {thresholds}
           />

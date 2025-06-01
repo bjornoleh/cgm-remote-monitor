@@ -1,15 +1,36 @@
-import type { Entry } from '../../../app.d.ts';
+import type { Entry } from '$lib';
 
 /**
  * Basic glucose statistics calculations
  */
 export interface BasicGlucoseStats {
+  /**
+   * Total number of glucose readings
+   */
   count: number;
+  /**
+   * Mean glucose value, rounded to one decimal place
+   */
   mean: number;
+  /**
+   * Median glucose value
+   */
   median: number;
+  /**
+   * Minimum glucose value recorded
+   */
   min: number;
+  /**
+   * Maximum glucose value recorded
+   */
   max: number;
+  /**
+   * Standard deviation of glucose values, rounded to one decimal place
+   */
   standardDeviation: number;
+  /**
+   * Percentiles of glucose values
+   */
   percentiles: {
     p5: number;
     p10: number;

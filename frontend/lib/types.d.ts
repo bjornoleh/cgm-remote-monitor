@@ -190,16 +190,7 @@ export type LoopCob = {
 
 export type PumpIob = { iob?: number; bolusiob: number };
 
-export type DeviceStatus = {
-  _id: string;
-  mills: number;
-  created_at: MomentInput;
-  uploader?: {
-    battery: number;
-    batteryVoltage?: number;
-    temperature?: number;
-  };
-  pump?: {
+export type Pump = {
     iob?: PumpIob;
     clock?: number;
     reservoir?: number;
@@ -217,8 +208,9 @@ export type DeviceStatus = {
       suspended?: boolean;
     };
     warnOnSuspend?: boolean;
-  };
-  openaps?: {
+  }
+
+  export type OpenAps = {
     iob?: OpenApsIob | OpenApsIob[];
     suggested?: {
       timestamp: number;
@@ -246,7 +238,8 @@ export type DeviceStatus = {
       mealAssist?: unknown;
     };
   };
-  loop: {
+
+  export type Loop = {
     name?: string;
     iob?: LoopIob;
     cob?: LoopCob;
@@ -272,12 +265,8 @@ export type DeviceStatus = {
       values: number[];
     };
   };
-  radioAdapter?: {
-    pumpRSSI?: number;
-    RSSI?: number;
-  };
-  connect?: any;
-  xdripjs?: {
+
+  export type XDripJs = {
     timestamp?: number;
     state: number;
     stateString: string;
@@ -305,6 +294,25 @@ export type DeviceStatus = {
     voltagea?: number;
     voltageb?: number;
   };
+
+export type DeviceStatus = {
+  _id: string;
+  mills: number;
+  created_at: MomentInput;
+  uploader?: {
+    battery: number;
+    batteryVoltage?: number;
+    temperature?: number;
+  };
+  pump?: Pump;
+  openaps?: OpenAps
+  loop: Loop
+  radioAdapter?: {
+    pumpRSSI?: number;
+    RSSI?: number;
+  };
+  connect?: any;
+  xdripjs?: XDripJs
   device: string;
   isCharging?: boolean;
   moment: Moment;
@@ -331,7 +339,7 @@ export interface EntryBase {
   scaled?: number | string;
 }
 
-type SGVDirection =
+export type SGVDirection =
   | "NONE"
   | "TripleUp"
   | "DoubleUp"
