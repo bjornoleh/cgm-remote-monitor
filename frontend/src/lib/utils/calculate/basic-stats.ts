@@ -20,17 +20,17 @@ export interface BasicGlucoseStats {
   };
 }
 
-export function calculateMean (values: number[]): number {
-  if (values.length === 0) return 0;
-  const sum = values.reduce((acc, val) => acc + val, 0);
-  return Math.round((sum / values.length) * 10) / 10; // Round to one decimal place
+export function calculateMean (glucoseValues: number[]): number {
+  if (glucoseValues.length === 0) return 0;
+  const sum = glucoseValues.reduce((acc, val) => acc + val, 0);
+  return Math.round((sum / glucoseValues.length) * 10) / 10; // Round to one decimal place
 }
 
 /**
  * Calculate basic glucose statistics
  */
-export function calculateBasicStats(values: number[]): BasicGlucoseStats {
-  if (values.length === 0) {
+export function calculateBasicStats(glucoseValues: number[]): BasicGlucoseStats {
+  if (glucoseValues.length === 0) {
     return {
       count: 0,
       mean: 0,
@@ -42,15 +42,15 @@ export function calculateBasicStats(values: number[]): BasicGlucoseStats {
     };
   }
 
-  const sorted = [...values].sort((a, b) => a - b);
-  const count = values.length;
-  const mean = calculateMean(values);
+  const sorted = [...glucoseValues].sort((a, b) => a - b);
+  const count = glucoseValues.length;
+  const mean = calculateMean(glucoseValues);
   const median = sorted[Math.floor(count / 2)];
   const min = sorted[0];
   const max = sorted[count - 1];
 
   // Standard deviation
-  const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / count;
+  const variance = glucoseValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / count;
   const standardDeviation = Math.sqrt(variance);
 
   // Percentiles
@@ -77,17 +77,17 @@ export function calculateBasicStats(values: number[]): BasicGlucoseStats {
 /**
  * Calculate specific percentile from sorted array
  */
-export function calculatePercentile(sortedValues: number[], percentile: number): number {
-  const index = (percentile / 100) * (sortedValues.length - 1);
+export function calculatePercentile(sortedGlucoseValues: number[], percentile: number): number {
+  const index = (percentile / 100) * (sortedGlucoseValues.length - 1);
   const lower = Math.floor(index);
   const upper = Math.ceil(index);
 
   if (lower === upper) {
-    return sortedValues[lower];
+    return sortedGlucoseValues[lower];
   }
 
   const weight = index - lower;
-  return sortedValues[lower] * (1 - weight) + sortedValues[upper] * weight;
+  return sortedGlucoseValues[lower] * (1 - weight) + sortedGlucoseValues[upper] * weight;
 }
 
 /**

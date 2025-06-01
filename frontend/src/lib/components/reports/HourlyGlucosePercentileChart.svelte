@@ -1,39 +1,21 @@
 <script lang="ts">
   import { AreaChart } from "layerchart";
   import { TIR_COLORS_CSS } from "$lib/constants/tir-colors";
-  import type { HourlyStats } from "$lib/calculations/types.js";
-  import { percentile } from "$lib/calculations/statistics.js";
+
+  interface HourlyPercentileData {
+    hour: number;
+    p10: number;
+    p25: number;
+    median: number;
+    p75: number;
+    p90: number;
+  }
 
   let {
-    hourlyStats,
+    data,
   }: {
-    hourlyStats: HourlyStats[];
+    data: HourlyPercentileData[];
   } = $props();
-
-  // Transform hourly stats to include p10 and p90 percentiles
-  const data = $derived(
-    hourlyStats.map((stats) => {
-      const values = stats.glucoseValues;
-      const sortedValues = [...values].sort((a, b) => a - b);
-
-      let p10 = stats.quartile25; // fallback
-      let p90 = stats.quartile75; // fallback
-
-      if (sortedValues.length > 0) {
-        p10 = percentile(sortedValues, 10);
-        p90 = percentile(sortedValues, 90);
-      }
-
-      return {
-        hour: stats.hour,
-        p10: Math.round(p10 * 10) / 10,
-        p25: stats.quartile25,
-        median: stats.median,
-        p75: stats.quartile75,
-        p90: Math.round(p90 * 10) / 10,
-      };
-    })
-  );
 
   // Format hour for display
   function formatHour(hour: number): string {
@@ -42,10 +24,12 @@
     if (hour === 12) return "12 PM";
     return `${hour - 12} PM`;
   }
+
   // Format glucose value
   function formatGlucose(value: number): string {
     return Math.round(value).toString();
   }
+  $inspect(data);
 </script>
 
 <div class="w-full">
@@ -54,8 +38,7 @@
       24-Hour Glucose Percentile Chart
     </h3>
     <p class="text-sm text-muted-foreground">
-      Glucose distribution across percentiles throughout the day (similar to old
-      Nightscout percentile chart)
+      Glucose distribution across percentiles throughout the day (similar to old Nightscout percentile chart)
     </p>
   </div>
 
@@ -66,24 +49,40 @@
         x={(d) => d.hour}
         series={[
           {
-            key: "p25",
+            key: "p10",
+            value: (d) => d.p10,
+            color: "#a0a0FF",
+            label: "10th-90th percentile"
+          },
+          {
+            key: "p25", 
             value: (d) => d.p25,
             color: "#000055",
+            label: "25th-75th percentile"
           },
           {
             key: "median",
             value: (d) => d.median,
             color: "#000000",
-            label: "Median",
+            label: "Median"
           },
           {
             key: "p75",
-            value: (d) => d.p75,
+            value: (d) => d.p75, 
             color: "#000055",
+            fillBetween: "p25"
           },
+          {
+            key: "p90",
+            value: (d) => d.p90,
+            color: "#a0a0FF", 
+            fillBetween: "p10"
+          }
         ]}
         xDomain={[0, 23]}
         yDomain={[0, 400]}
+        xScale="linear"
+        yScale="linear"
         padding={{ top: 20, right: 20, bottom: 40, left: 60 }}
       />
     </div>

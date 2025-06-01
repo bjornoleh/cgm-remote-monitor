@@ -1,4 +1,6 @@
 import type { PageServerLoad } from "./$types";
+import type { Entry } from "../../../app.d.ts";
+import { calculateBasicStats, extractGlucoseValues, type BasicGlucoseStats } from "$lib/utils/calculate/basic-stats.js";
 
 export const load: PageServerLoad = async ({ fetch, url }) => {
   const fetchData = async () => {
@@ -33,7 +35,7 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
       endDate.setHours(23, 59, 59, 999);
 
       const weeklyData = await processWeeklyPercentileData(fetch, startDate, endDate);
-
+      console.log('Weekly overview data loaded:', weeklyData);
       return {
         success: true,
         data: {
@@ -61,15 +63,11 @@ async function processWeeklyPercentileData(
   fetch: typeof globalThis.fetch,
   startDate: Date,
   endDate: Date
-) {
-  // Build API query parameters
+): Promise<(BasicGlucoseStats & { date: Date })[]> {
+  // Build API query parameters using proper Nightscout API format
   const params = new URLSearchParams({
-    find: JSON.stringify({
-      dateString: {
-        $gte: startDate.toISOString().split('T')[0],
-        $lte: endDate.toISOString().split('T')[0]
-      }
-    }),
+    'find[date][$gte]': startDate.getTime().toString(),
+    'find[date][$lt]': endDate.getTime().toString(),
     count: '50000'
   });
 
@@ -78,70 +76,40 @@ async function processWeeklyPercentileData(
   if (!entriesResponse.ok) {
     throw new Error(`Failed to fetch entries: ${entriesResponse.statusText}`);
   }
+  const entries: Entry[] = await entriesResponse.json();
 
-  const entries = await entriesResponse.json();
-  
   // Group data by week and calculate percentiles
-  const weeklyData = [];
+  const weeklyData: (BasicGlucoseStats & { date: Date })[] = [];
   const oneWeek = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-  
+
   let currentWeekStart = new Date(startDate);
-  
+
   while (currentWeekStart <= endDate) {
     const weekEnd = new Date(Math.min(currentWeekStart.getTime() + oneWeek - 1, endDate.getTime()));
-    
+
     // Filter entries for this week
-    const weekEntries = entries.filter((entry: any) => {
-      const entryDate = new Date(entry.dateString);
+    const weekEntries = entries.filter((entry: Entry) => {
+      const entryDate = new Date(entry.date);
       return entryDate >= currentWeekStart && entryDate <= weekEnd;
     });
-    
-    // Extract glucose values
-    const glucoseValues = weekEntries
-      .map((entry: any) => entry.sgv)
-      .filter((sgv: number) => sgv && sgv > 0)
-      .sort((a: number, b: number) => a - b);
-    
+
+    // Extract glucose values using the utility function
+    const glucoseValues = extractGlucoseValues(weekEntries);
+
     if (glucoseValues.length > 0) {
-      // Calculate percentiles
-      const percentiles = calculatePercentiles(glucoseValues);
-      
-      weeklyData.push({
-        date: new Date(currentWeekStart),
-        low: percentiles.p10,
-        p25: percentiles.p25,
-        median: percentiles.p50,
-        p75: percentiles.p75,
-        high: percentiles.p90
-      });
+      // Use calculateBasicStats to get all percentiles in one calculation
+      const stats = calculateBasicStats(glucoseValues);
+
+      weeklyData.push(Object.assign({
+
+        ...stats,
+        date: new Date(currentWeekStart)
+      }));
     }
-    
+
     // Move to next week
     currentWeekStart = new Date(currentWeekStart.getTime() + oneWeek);
   }
-  
-  return weeklyData;
-}
 
-// Calculate percentiles from sorted array
-function calculatePercentiles(sortedValues: number[]) {
-  const getPercentile = (p: number) => {
-    const index = (p / 100) * (sortedValues.length - 1);
-    const lower = Math.floor(index);
-    const upper = Math.ceil(index);
-    const weight = index % 1;
-    
-    if (upper >= sortedValues.length) return sortedValues[sortedValues.length - 1];
-    if (lower < 0) return sortedValues[0];
-    
-    return sortedValues[lower] * (1 - weight) + sortedValues[upper] * weight;
-  };
-  
-  return {
-    p10: getPercentile(10),
-    p25: getPercentile(25),
-    p50: getPercentile(50), // median
-    p75: getPercentile(75),
-    p90: getPercentile(90)
-  };
+  return weeklyData;
 }
