@@ -1,5 +1,5 @@
 import { apiGet } from '$lib/api';
-import type { SGVEntry } from '$lib';
+import type { Sgv } from '$lib';
 import { percentile } from './statistics.js';
 
 export interface HourlyPercentileData {
@@ -23,7 +23,7 @@ export async function processHourlyPercentiles(
   minuteWindow: number = 30
 ): Promise<HourlyPercentileData[]> {
   // Fetch SGV data
-  const sgvResponse = await apiGet<SGVEntry[]>(fetch, '/api/v1/entries.json', {
+  const sgvResponse = await apiGet<Sgv[]>(fetch, '/api/v1/entries.json', {
     params: {
       'find[type]': 'sgv',
       'find[date][$gte]': startDate.getTime().toString(),
@@ -109,7 +109,7 @@ export async function processHourlyPercentilesBinned(
   minuteWindow: number = 30
 ): Promise<HourlyPercentileData[]> {
   // Fetch SGV data
-  const sgvResponse = await apiGet<SGVEntry[]>(fetch, '/api/v1/entries.json', {
+  const sgvResponse = await apiGet<Sgv[]>(fetch, '/api/v1/entries.json', {
     params: {
       'find[type]': 'sgv',
       'find[date][$gte]': startDate.getTime().toString(),

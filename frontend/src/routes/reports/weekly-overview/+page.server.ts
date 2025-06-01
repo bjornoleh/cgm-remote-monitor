@@ -2,7 +2,7 @@ import type { PageServerLoad } from "./$types";
 import { processHourlyStats } from "$lib/calculations/hourly-stats.js";
 import { apiGet } from "$lib/api.js";
 import { analyzeGlucoseData, DEFAULT_THRESHOLDS } from "$lib/utils/glucose-analytics.js";
-import type { SGVEntry } from "$lib/types/nightscout.js";
+import type { Sgv } from "$lib/types/nightscout.js";
 import type { Entry } from "$lib/app.d.ts";
 
 export const load: PageServerLoad = async ({ fetch, url }) => {
@@ -41,7 +41,7 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
       const { hourlyStats } = await processHourlyStats(fetch, startDate, endDate);
 
       // Fetch SGV data for proper TIR calculations
-      const sgvResponse = await apiGet<SGVEntry[]>(fetch, '/api/v1/entries.json', {
+      const sgvResponse = await apiGet<Sgv[]>(fetch, '/api/v1/entries.json', {
         params: {
           'find[type]': 'sgv',
           'find[date][$gte]': startDate.getTime().toString(),

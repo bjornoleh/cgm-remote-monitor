@@ -332,6 +332,7 @@ export type DeviceStatus = {
 };
 
 export interface EntryBase {
+  /** Time in milliseconds since the Unix epoch */
   mills: number;
   date?: Date;
   mgdl: number;

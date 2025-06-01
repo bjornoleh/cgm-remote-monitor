@@ -1,4 +1,4 @@
-import { error, fail } from '@sveltejs/kit';
+import { error, fail, type Actions } from '@sveltejs/kit';
 
 export const load = async ({ fetch }) => {
   try {
@@ -10,24 +10,10 @@ export const load = async ({ fetch }) => {
       mongoRecords = await profileResponse.json();
     }
 
-    // Load timezones (simplified list for now)
-    const timezones = [
-      'UTC',
-      'America/New_York',
-      'America/Chicago',
-      'America/Denver',
-      'America/Los_Angeles',
-      'Europe/London',
-      'Europe/Paris',
-      'Europe/Berlin',
-      'Asia/Tokyo',
-      'Asia/Shanghai',
-      'Australia/Sydney'
-    ];
+
 
     return {
       mongoRecords,
-      timezones
     };
   } catch (err) {
     console.error('Error loading profile data:', err);
@@ -35,7 +21,7 @@ export const load = async ({ fetch }) => {
   }
 };
 
-export const actions = {
+export const actions: Actions = {
   save: async ({ request, fetch }) => {
     try {
       const formData = await request.formData();

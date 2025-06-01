@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { apiGet } from '$lib/api';
-import type { CalibrationEntry, MBGEntry, SGVEntry } from '$lib';
+import type { CalibrationEntry, MBGEntry, Sgv } from '$lib';
 
 interface CalibrationEvent {
   id: string;
@@ -56,7 +56,7 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
       });
 
       // Get SGV data to correlate with calibrations
-      const sgvResponse = await apiGet<SGVEntry[]>(fetch, '/api/v1/entries.json', {
+      const sgvResponse = await apiGet<Sgv[]>(fetch, '/api/v1/entries.json', {
         params: {
           'find[type]': 'sgv',
           'find[date][$gte]': fromDate.toString(),
@@ -91,8 +91,8 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
       });
 
       // Helper function to find nearest SGV reading
-      const findNearestSGV = (timestamp: number, maxDiffMs = 5 * 60 * 1000): SGVEntry | null => {
-        let nearest: SGVEntry | null = null;
+      const findNearestSGV = (timestamp: number, maxDiffMs = 5 * 60 * 1000): Sgv | null => {
+        let nearest: Sgv | null = null;
         let minDiff = Infinity;
 
         for (const sgv of sgvs) {

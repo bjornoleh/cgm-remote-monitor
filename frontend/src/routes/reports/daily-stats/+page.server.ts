@@ -1,6 +1,6 @@
 import type { PageServerLoad } from "./$types";
 import { apiGet } from '$lib/api';
-import type { SGVEntry, TimeInRanges } from '$lib';
+import type { Sgv, TimeInRanges } from '$lib';
 import { analyzeGlucoseData } from '$lib/utils/glucose-analytics';
 
 interface DayStats {
@@ -43,7 +43,7 @@ async function processDayStats(fetch: typeof globalThis.fetch, date: Date): Prom
   const endOfDay = new Date(date);
   endOfDay.setHours(23, 59, 59, 999);
 
-  const response = await apiGet<SGVEntry[]>(fetch, '/api/v1/entries.json', {
+  const response = await apiGet<Sgv[]>(fetch, '/api/v1/entries.json', {
     params: {
       'find[type]': 'sgv',
       'find[date][$gte]': startOfDay.getTime().toString(),
@@ -132,7 +132,7 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
       endDate.setHours(23, 59, 59, 999);
 
       // Fetch SGV data for the date range
-      const response = await apiGet<SGVEntry[]>(fetch, '/api/v1/entries.json', {
+      const response = await apiGet<Sgv[]>(fetch, '/api/v1/entries.json', {
         params: {
           'find[type]': 'sgv',
           'find[date][$gte]': startDate.getTime().toString(),

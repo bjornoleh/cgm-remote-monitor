@@ -12,13 +12,11 @@
     SelectContent,
     SelectItem,
     SelectTrigger,
-    SelectValue,
   } from "$lib/components/ui/select";
   import { Switch } from "$lib/components/ui/switch";
 
   interface Props {
     selectedTimezone: string;
-    timezones: string[];
     diaInput: string;
     carbsHrInput: string;
     perGIValues: boolean;
@@ -33,7 +31,6 @@
 
   let {
     selectedTimezone = $bindable(),
-    timezones,
     diaInput = $bindable(),
     carbsHrInput = $bindable(),
     perGIValues = $bindable(),
@@ -64,7 +61,7 @@
         >
           <SelectTrigger>Select timezone</SelectTrigger>
           <SelectContent>
-            {#each timezones as tz}
+            {#each Intl.supportedValuesOf("timeZone") as tz}
               <SelectItem value={tz}>{tz}</SelectItem>
             {/each}
           </SelectContent>

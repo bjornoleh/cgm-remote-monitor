@@ -48,12 +48,19 @@
               month: "short",
               day: "numeric",
             })}
-          </TableCell>          <TableCell class={getGlucoseColor(entry.analytics.basicStats.mean, thresholds)}>
+          </TableCell>
+          <TableCell
+            class={getGlucoseColor(entry.analytics.basicStats.mean, thresholds)}
+          >
             {Math.round(entry.analytics.basicStats.mean) || "N/A"}
           </TableCell>
           <TableCell class="text-sm">
             {#if entry.readingsCount > 0}
-              <div>{Math.round(entry.analytics.basicStats.min)} - {Math.round(entry.analytics.basicStats.max)}</div>
+              <div>
+                {Math.round(entry.analytics.basicStats.min)} - {Math.round(
+                  entry.analytics.basicStats.max
+                )}
+              </div>
             {:else}
               N/A
             {/if}
@@ -62,15 +69,18 @@
             {entry.readingsCount}
           </TableCell>
           <TableCell>
-            {entry.analytics.basicStats.standardDeviation ? `${Math.round(entry.analytics.basicStats.standardDeviation)}` : "N/A"}
-          </TableCell>          <TableCell class="text-sm">
+            {entry.analytics.basicStats.standardDeviation
+              ? `${Math.round(entry.analytics.basicStats.standardDeviation)}`
+              : "N/A"}
+          </TableCell>
+          <TableCell class="text-sm">
             {#if entry.readingsCount > 0}
               <div class="text-green-600">
                 {entry.analytics.timeInRange.percentages.target}% Target
               </div>
               <div class="text-blue-600">
-                {entry.analytics.timeInRange.percentages.tightTarget ?? 
-                 entry.analytics.timeInRange.percentages.target}% TTIR
+                {entry.analytics.timeInRange.percentages.tightTarget ??
+                  entry.analytics.timeInRange.percentages.target}% TTIR
               </div>
               <div class="text-xs text-gray-500">
                 ({thresholds.bgTargetBottom}-{thresholds.bgTightTargetTop} mg/dL)

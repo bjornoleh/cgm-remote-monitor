@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { apiGet } from '$lib/api';
-import type { SGVEntry, TimeInRanges } from '$lib';
+import type { Sgv, TimeInRanges } from '$lib';
 import { calculateGlucoseDistribution } from '$lib/utils/calculate/glucose-distribution';
 import { calculateTimeInRange, DEFAULT_THRESHOLDS, type TimeInRangeMetrics } from '$lib/utils/calculate/time-in-range';
 
@@ -25,7 +25,7 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
       }
 
       // Fetch SGV data for the date range
-      const response = await apiGet<SGVEntry[]>(fetch, '/api/v1/entries.json', {
+      const response = await apiGet<Sgv[]>(fetch, '/api/v1/entries.json', {
         params: {
           'find[type]': 'sgv',
           'find[date][$gte]': startDate.getTime().toString(),

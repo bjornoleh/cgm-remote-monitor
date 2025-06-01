@@ -1,76 +1,90 @@
 <script lang="ts">
-  import { ScatterChart } from "layerchart";
-  import { scaleTime, scaleThreshold } from "d3-scale";
+  import { Bar, BarChart, ScatterChart, Tooltip } from "layerchart";
+  import { scaleTime, scaleThreshold, scaleLinear } from "d3-scale";
   import type { Thresholds } from "./types";
-  import type { Entry, Treatment } from "$lib";
+  import type { Sgv, Treatment } from "$lib";
   import { TIR_COLORS_CSS } from "$lib/constants";
   import * as Chart from "$lib/components/ui/chart/index.js";
 
   interface Props {
-    entries: Entry[];
+    entries: Sgv[];
     treatments: Treatment[];
     date: string; // YYYY-MM-DD
     thresholds: Thresholds;
   }
-
   let { entries, treatments, date, thresholds }: Props = $props();
-  // Combine entries and treatments into chart data
-  const chartData = $derived(() => {
-    const data: any[] = [];
 
-    // Add glucose entries
-    for (const entry of entries) {
-      if (entry.sgv || entry.mgdl) {
-        data.push({
-          timestamp: entry.date,
-          glucoseValue: entry.sgv || entry.mgdl || 0,
-          _id: entry._id,
-          type: "glucose" as const,
-        });
-      }
-    }
+  const insulinToCarbRatio = 12; // Hardcoded ratio
 
-    // Add treatments
-    for (const treatment of treatments) {
-      const timestamp = new Date(treatment.timestamp).getTime();
-      data.push({
-        timestamp,
-        glucoseValue: 0, // Treatments don't have glucose values, will be positioned at bottom
-        _id: treatment._id,
-        type: "treatment" as const,
-        eventType: treatment.eventType,
-        insulin: treatment.insulin,
-        carbs: treatment.carbs,
-        notes: treatment.notes,
-      });
-    }
+  // Create D3 scale for insulin to carb ratio
+  const insulinScale = scaleLinear()
+    .domain([0, 1]) // 1 unit of insulin
+    .range([0, insulinToCarbRatio]); // maps to 12 carbs
 
-    return data.sort((a, b) => a.timestamp - b.timestamp);
-  });
+  // Scale insulin values by the insulin-to-carb ratio using D3 scale
+  const scaledTreatments = $derived(
+    treatments.map((treatment) => ({
+      ...treatment,
+      insulin: treatment.insulin
+        ? insulinScale(treatment.insulin)
+        : treatment.insulin,
+    }))
+  );
+
   const xScale = $derived(
     scaleTime().domain([
       new Date(date + "T00:00:00").getTime(),
       new Date(date + "T23:59:59").getTime(),
     ])
   );
-
-  const chartConfig = {
-    glucose: {},
-  } satisfies Chart.ChartConfig;
+  $inspect(entries, treatments);
 </script>
 
-<Chart.Container config={chartConfig} class="h-72 md:h-96">
+<div class="h-72 md:h-96 grid grid-stack">
+  <BarChart
+    data={scaledTreatments}
+    x="mills"
+    y={["carbs", "insulin"]}
+    yScale={scaleLinear().domain([0, 100]).range([0, insulinToCarbRatio])}
+    renderContext={"svg"}
+    props={{
+      xAxis: {
+        hidden: true,
+      },
+      yAxis: {
+        placement: "right",
+      },
+    }}
+    legend
+    series={[
+      {
+        key: "carbs",
+        color: "var(--carbs)",
+        label: "Carbs",
+        props: { fillOpacity: 0.5 },
+      },
+      {
+        key: "insulin",
+        color: "var(--insulin)",
+        label: `Insulin`,
+        props: { insets: { x: 6 } },
+      },
+    ]}
+    padding={{ top: 20, right: 30, bottom: 40, left: 50 }}
+  ></BarChart>
   <ScatterChart
-    data={chartData()}
-    x="timestamp"
-    y="glucoseValue"
-    c="glucoseValue"
+    data={[entries, ...scaledTreatments]}
+    x="mills"
+    y={"sgv"}
+    c="sgv"
     yBaseline={0}
     axis="y"
     {xScale}
     cScale={scaleThreshold()}
-    tooltip={{
-      mode: "bisect-y",
+    props={{
+      points: {
+        r: 3,
+      },
     }}
     cDomain={[
       thresholds.bgLow,
@@ -119,12 +133,28 @@
     <Tooltip.Root class="bg-popover">
       {#snippet children({ data })}
         <Tooltip.Header>
-          {formatTimeForTooltip(new Date(data.timestamp))}
+          {formatTimeForTooltip(new Date(data.mills))}
         </Tooltip.Header>
         <Tooltip.List>
           <Tooltip.Item label="value" value={data.glucoseValue} />
         </Tooltip.List>
       {/snippet}
     </Tooltip.Root> -->
+
+    {#snippet tooltip({ context })}
+      <Tooltip.Root {context}>
+        {#snippet children({ data })}
+          <Tooltip.Header value={data.date} format="time" />
+          <Tooltip.List>
+            <Tooltip.Item label="BG" value={data.sgv} />
+            <Tooltip.Item label="Carbs (g)" value={data.carbs} />
+            <Tooltip.Item
+              label="Insulin"
+              value={data.insulin || 0 / insulinToCarbRatio}
+            />
+          </Tooltip.List>
+        {/snippet}
+      </Tooltip.Root>
+    {/snippet}
   </ScatterChart>
-</Chart.Container>
+</div>

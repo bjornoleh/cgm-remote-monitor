@@ -3,7 +3,6 @@
   import { enhance } from "$app/forms";
   import { Button } from "$lib/components/ui/button";
   import { Save } from "lucide-svelte";
-  import type { PageData, ActionData } from "./$types";
   import ProfileHeader from "./ProfileHeader.svelte";
   import DatabaseRecords from "./DatabaseRecords.svelte";
   import StoredProfiles from "./StoredProfiles.svelte";
@@ -11,12 +10,7 @@
   import IntervalEditor from "./IntervalEditor.svelte";
   import TargetBGEditor from "./TargetBGEditor.svelte";
 
-  interface Props {
-    data: PageData;
-    form?: ActionData;
-  }
-
-  let { data, form }: Props = $props();
+  let { data, form } = $props();
 
   let mongoRecords = $state(data.mongoRecords || []);
   let timezones = $state(data.timezones || []);
@@ -137,12 +131,6 @@
   function toMinutesFromMidnight(time) {
     const split = time.split(":");
     return parseInt(split[0]) * 60 + parseInt(split[1]);
-  }
-
-  function toTimeString(minutesFromMidnight) {
-    const hours = Math.floor(minutesFromMidnight / 60);
-    const minutes = minutesFromMidnight % 60;
-    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
   }
 
   function addInterval(arrayName, index) {

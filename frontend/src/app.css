@@ -2,6 +2,7 @@
 
 @import "tw-animate-css";
 @source '../node_modules/layerchart/dist';
+@import '@layerstack/tailwind/utils.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -47,6 +48,10 @@
   --iob-basal: oklch(0.646 0.222 41.116);
   --iob-bolus: oklch(0.769 0.188 70.08);
   --iob-temporary: oklch(0.6 0.118 184.704);
+
+  --carbs: oklch(0.769 0.188 70.08);
+  --insulin: oklch(0.928 0.006 264.531);
+
 }
 
 .dark {
@@ -137,9 +142,12 @@
   --color-high-bg: var(--high-bg);
   --color-severe-high-bg: var(--severe-high-bg);
 
-  --color-iob-basal: oklch(0.646 0.222 41.116);
-  --color-iob-bolus: oklch(0.769 0.188 70.08);
-  --color-iob-temporary: oklch(0.6 0.118 184.704);
+  --color-carbs: var(--carbs);
+  --color-insulin: var(--insulin);
+
+  --color-iob-basal: var(--iob-basal);
+  --color-iob-bolus: var(--iob-bolus);
+  --color-iob-temporary: var(--iob-temporary);
 }
 
 @layer base {

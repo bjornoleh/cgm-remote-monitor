@@ -1,5 +1,5 @@
 import { apiGet } from '$lib/api';
-import type { SGVEntry } from '$lib';
+import type { Sgv } from '$lib';
 import type { Treatment } from '$lib'
 import type { HourlyStats, HourlyBoxPlotData } from './types.js';
 import { percentile, standardDeviation, calculateOutliers } from './statistics.js';
@@ -12,8 +12,8 @@ async function fetchSGVData(
   fetch: typeof globalThis.fetch,
   startDate: Date,
   endDate: Date
-): Promise<SGVEntry[]> {
-  const sgvResponse = await apiGet<SGVEntry[]>(fetch, '/api/v1/entries.json', {
+): Promise<Sgv[]> {
+  const sgvResponse = await apiGet<Sgv[]>(fetch, '/api/v1/entries.json', {
     params: {
       'find[type]': 'sgv',
       'find[date][$gte]': startDate.getTime().toString(),
@@ -47,7 +47,7 @@ async function fetchTreatmentData(
 /**
  * Group SGV readings by hour (0-23)
  */
-function groupReadingsByHour(readings: SGVEntry[]): { [hour: number]: number[] } {
+function groupReadingsByHour(readings: Sgv[]): { [hour: number]: number[] } {
   const hourlyData: { [hour: number]: number[] } = {};
 
   // Initialize arrays for each hour
