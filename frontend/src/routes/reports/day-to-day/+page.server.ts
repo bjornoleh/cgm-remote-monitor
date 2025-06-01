@@ -91,66 +91,9 @@ async function processDayData(
     !sgvResponse.data ||
     sgvResponse.data.length === 0
   ) {
-    // Return default values if no data
-    return {
-      date: date.toISOString().split("T")[0], // Return just the date part (YYYY-MM-DD)
-      analytics: {
-        basicStats: {
-          count: 0,
-          mean: 0,
-          median: 0,
-          min: 0,
-          max: 0,
-          standardDeviation: 0,
-          percentiles: { p5: 0, p10: 0, p25: 0, p75: 0, p90: 0, p95: 0 }
-        },
-        timeInRange: {
-          percentages: { severeLow: 0, low: 0, target: 0, high: 0, severeHigh: 0 },
-          durations: { severeLow: 0, low: 0, target: 0, high: 0, severeHigh: 0 },
-          episodes: { severeLow: 0, low: 0, high: 0, severeHigh: 0 }
-        },
-        glycemicVariability: {
-          coefficientOfVariation: 0,
-          standardDeviation: 0,
-          meanAmplitudeGlycemicExcursions: 0,
-          continuousOverlappingNetGlycemicAction: 0,
-          averageDailyRiskRange: 0,
-          labilityIndex: 0,
-          jIndex: 0,
-          highBloodGlucoseIndex: 0,
-          lowBloodGlucoseIndex: 0,
-          glycemicVariabilityIndex: 0,
-          patientGlycemicStatus: 0
-        },
-        dataQuality: {
-          totalReadings: 0,
-          missingReadings: 0,
-          dataCompleteness: 0,
-          gapAnalysis: { gaps: [], longestGap: 0, averageGap: 0 },
-          noiseLevel: 0,
-          calibrationEvents: 0,
-          sensorWarmups: 0
-        }
-      },
-      readingsCount: 0,
-      trend: "stable",
-      glucoseData: [],
-      treatments: [],
-      treatmentSummary: {
-        totals: {
-          food: {
-            carbs: 0,
-            protein: 0,
-            fat: 0,
-          },
-          insulin: {
-            bolus: 0,
-            basal: 0,
-          },
-        },
-        treatmentCount: 0,
-      },
-    };
+    throw new Error(
+      `No glucose data found for ${date.toISOString().split("T")[0]}`
+    );
   }
   const readings = sgvResponse.data;
   const treatments = treatmentResponse.success
