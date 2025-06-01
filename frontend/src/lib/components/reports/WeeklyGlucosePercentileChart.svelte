@@ -16,6 +16,7 @@
       x={(d) => d.hour}
       y={(d) => d.median}
       renderContext="svg"
+      legend
       series={[
         {
           key: "p10",
@@ -48,11 +49,6 @@
           value: [(d) => d.quartile75, (d) => d.p90],
           color: "var(--chart-1)",
         },
-        // {
-        //   key: "p90",
-        //   value: (d) => d.p90,
-        //   color: "#0000aa",
-        // },
       ]}
       xDomain={[0, 23]}
       yDomain={[0, 400]}

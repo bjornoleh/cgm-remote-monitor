@@ -1,5 +1,13 @@
 <script lang="ts">
-  import { Bar, BarChart, ScatterChart, Tooltip } from "layerchart";
+  import {
+    Axis,
+    Bar,
+    BarChart,
+    Points,
+    ScatterChart,
+    Svg,
+    Tooltip,
+  } from "layerchart";
   import { scaleTime, scaleThreshold, scaleLinear } from "d3-scale";
   import type { Thresholds } from "./types";
   import type { Sgv, Treatment } from "$lib";
@@ -41,7 +49,7 @@
 </script>
 
 <div class="h-72 md:h-96 grid grid-stack">
-  <BarChart
+  <!-- <BarChart
     data={scaledTreatments}
     x="mills"
     y={["carbs", "insulin"]}
@@ -71,14 +79,15 @@
       },
     ]}
     padding={{ top: 20, right: 30, bottom: 40, left: 50 }}
-  ></BarChart>
+  ></BarChart> -->
   <ScatterChart
     data={[entries, ...scaledTreatments]}
     x="mills"
-    y={"sgv"}
+    y={["sgv", "carbs", "insulin"]}
     c="sgv"
     yBaseline={0}
     axis="y"
+    legend
     {xScale}
     cScale={scaleThreshold()}
     props={{
@@ -124,37 +133,27 @@
     ]}
     padding={{ top: 20, right: 30, bottom: 40, left: 50 }}
   >
-    <!-- <Svg>
+    <Svg>
       <Axis placement="left" grid rule />
       <Axis placement="bottom" rule />
-      <Points r={3} class="stroke-surface-content/50" />
-      <Highlight points lines />
-    </Svg>
-    <Tooltip.Root class="bg-popover">
-      {#snippet children({ data })}
-        <Tooltip.Header>
-          {formatTimeForTooltip(new Date(data.mills))}
-        </Tooltip.Header>
-        <Tooltip.List>
-          <Tooltip.Item label="value" value={data.glucoseValue} />
-        </Tooltip.List>
+      <Points x={"mills"} y={"sgv"} r={3} />
+      <Bar x={"mills"} y={"carbs"} data={scaledTreatments} />
+      <Bar x={"mills"} y={"insulin"} data={scaledTreatments} />
+      {#snippet tooltip({ context })}
+        <Tooltip.Root {context}>
+          {#snippet children({ data })}
+            <Tooltip.Header value={data.date} format="time" />
+            <Tooltip.List>
+              <Tooltip.Item label="BG" value={data?.sgv} />
+              <Tooltip.Item label="Carbs (g)" value={data?.carbs} />
+              <Tooltip.Item
+                label="Insulin"
+                value={data?.insulin || 0 / insulinToCarbRatio}
+              />
+            </Tooltip.List>
+          {/snippet}
+        </Tooltip.Root>
       {/snippet}
-    </Tooltip.Root> -->
-
-    {#snippet tooltip({ context })}
-      <Tooltip.Root {context}>
-        {#snippet children({ data })}
-          <Tooltip.Header value={data.date} format="time" />
-          <Tooltip.List>
-            <Tooltip.Item label="BG" value={data.sgv} />
-            <Tooltip.Item label="Carbs (g)" value={data.carbs} />
-            <Tooltip.Item
-              label="Insulin"
-              value={data.insulin || 0 / insulinToCarbRatio}
-            />
-          </Tooltip.List>
-        {/snippet}
-      </Tooltip.Root>
-    {/snippet}
+    </Svg>
   </ScatterChart>
 </div>

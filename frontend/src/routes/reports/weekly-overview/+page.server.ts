@@ -2,8 +2,9 @@ import type { PageServerLoad } from "./$types";
 import { processHourlyStats } from "$lib/calculations/hourly-stats.js";
 import { apiGet } from "$lib/api.js";
 import { analyzeGlucoseData, DEFAULT_THRESHOLDS } from "$lib/utils/glucose-analytics.js";
-import type { Sgv } from "$lib/types/nightscout.js";
-import type { Entry } from "$lib/app.d.ts";
+import { assessDataQuality, type DataQuality } from "$lib/utils/calculate/data-quality.js";
+import type { Entry, Sgv } from "$lib";
+
 
 export const load: PageServerLoad = async ({ fetch, url }) => {
   const fetchData = async () => {
@@ -55,7 +56,7 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
 
       if (sgvResponse.success && sgvResponse.data && sgvResponse.data.length > 0) {
         // Convert SGV entries to Entry format for analytics
-        const entries: Entry[] = sgvResponse.data.map(reading => ({
+        const entries: Sgv[] = sgvResponse.data.map(reading => ({
           _id: reading._id,
           type: reading.type,
           sgv: reading.sgv,
@@ -72,19 +73,36 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
           includeLoopingMetrics: false,
           units: 'mg/dl'
         });
-
         tirMetrics = analytics.timeInRange;
         glucoseMetrics = {
           totalReadings: analytics.basicStats.count,
           averageGlucose: Math.round(analytics.basicStats.mean),
           standardDeviation: Math.round(analytics.basicStats.standardDeviation),
-          percentiles: analytics.basicStats.percentiles
-        };        console.log('TIR Analytics calculated:', {
+          percentiles: analytics.basicStats.percentiles,
+          dataQuality: undefined as DataQuality | undefined
+        };
+
+        // Calculate data quality metrics using the refactored module
+        const dataQualityMetrics = assessDataQuality(entries, {
+          thresholds: DEFAULT_THRESHOLDS,
+          sensorType: 'GENERIC_5MIN'
+        });
+
+        console.log('TIR Analytics calculated:', {
           timeInRange: tirMetrics.percentages.target,
           tightTimeInRange: tirMetrics.percentages.tightTarget,
           totalReadings: glucoseMetrics.totalReadings,
           averageGlucose: glucoseMetrics.averageGlucose
         });
+        console.log('Data Quality Metrics:', {
+          cgmActivePercent: dataQualityMetrics.cgmActivePercent,
+          dataCompleteness: dataQualityMetrics.dataCompleteness,
+          totalReadings: dataQualityMetrics.totalReadings,
+          longestGap: dataQualityMetrics.gapAnalysis.longestGap
+        });
+
+        // Add data quality metrics to the response
+        glucoseMetrics.dataQuality = dataQualityMetrics;
       }
 
       console.log('Hourly percentile data loaded:', hourlyStats.length, 'hours');

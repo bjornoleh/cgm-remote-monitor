@@ -1,26 +1,42 @@
 import type { PageServerLoad } from "./$types";
 import { apiGet } from '$lib/api';
-import type { Sgv, TimeInRanges } from '$lib';
+import type { Sgv } from '$lib';
+import type { TimeInRangeMetrics } from '$lib/utils/calculate/time-in-range';
 import { analyzeGlucoseData } from '$lib/utils/glucose-analytics';
+import { calculateCGMActivePercent } from '$lib/utils/calculate/data-quality';
 
 interface DayStats {
   date: Date;
   averageGlucose: number;
-  timeInRanges: TimeInRanges;
+  timeInRanges: TimeInRangeMetrics;
   glucoseReadings: number[];
 }
 
 /**
  * Convert glucose analytics TIR to legacy format
  */
-function convertTIRFormat(analytics: ReturnType<typeof analyzeGlucoseData>): TimeInRanges {
+function convertTIRFormat(analytics: ReturnType<typeof analyzeGlucoseData>): TimeInRangeMetrics {
   return {
-    severeLow: analytics.timeInRange.percentages.severeLow,
-    low: analytics.timeInRange.percentages.low,
-    target: analytics.timeInRange.percentages.target,
-    tightTimeInRange: analytics.timeInRange.percentages.target, // Using target range as tight range
-    high: analytics.timeInRange.percentages.high,
-    severeHigh: analytics.timeInRange.percentages.severeHigh
+    percentages: {
+      severeLow: analytics.timeInRange.percentages.severeLow,
+      low: analytics.timeInRange.percentages.low,
+      target: analytics.timeInRange.percentages.target,
+      high: analytics.timeInRange.percentages.high,
+      severeHigh: analytics.timeInRange.percentages.severeHigh
+    },
+    durations: {
+      severeLow: analytics.timeInRange.durations.severeLow,
+      low: analytics.timeInRange.durations.low,
+      target: analytics.timeInRange.durations.target,
+      high: analytics.timeInRange.durations.high,
+      severeHigh: analytics.timeInRange.durations.severeHigh
+    },
+    episodes: {
+      severeLow: analytics.timeInRange.episodes.severeLow,
+      low: analytics.timeInRange.episodes.low,
+      high: analytics.timeInRange.episodes.high,
+      severeHigh: analytics.timeInRange.episodes.severeHigh
+    }
   };
 }
 
@@ -50,14 +66,17 @@ async function processDayStats(fetch: typeof globalThis.fetch, date: Date): Prom
       'find[date][$lte]': endOfDay.getTime().toString(),
       count: '1000'
     }
-  });
-  if (!response.success || !response.data) {
+  });  if (!response.success || !response.data) {
     // Return default values if no data
     return {
       date,
       averageGlucose: 0,
-      timeInRanges: { severeLow: 0, low: 0, target: 0, tightTimeInRange: 0, high: 0, severeHigh: 0 },
-      glucoseReadings: [],
+      timeInRanges: {
+        percentages: { severeLow: 0, low: 0, target: 0, high: 0, severeHigh: 0 },
+        durations: { severeLow: 0, low: 0, target: 0, high: 0, severeHigh: 0 },
+        episodes: { severeLow: 0, low: 0, high: 0, severeHigh: 0 }
+      },
+      glucoseReadings: []
     };
   }
   const readings = response.data;
@@ -84,12 +103,11 @@ async function processDayStats(fetch: typeof globalThis.fetch, date: Date): Prom
     sensorType: 'GENERIC_5MIN',
     includeLoopingMetrics: false
   });
-
   return {
     date,
     averageGlucose: Math.round(analytics.basicStats.mean),
     timeInRanges: convertTIRFormat(analytics),
-    glucoseReadings: readings.map(reading => reading.sgv),
+    glucoseReadings: readings.map(reading => reading.sgv)
   };
 }
 
@@ -167,17 +185,31 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
         },
         sensorType: 'GENERIC_5MIN',
         includeLoopingMetrics: false
-      });
-
-      // Use analytics object directly instead of duplicating calculations
+      });      // Use analytics object directly instead of duplicating calculations
       const estimatedA1c = calculateEstimatedA1C(analytics.basicStats.mean);
       const highEvents = analytics.timeInRange.episodes.high + analytics.timeInRange.episodes.severeHigh;
       const lowEvents = analytics.timeInRange.episodes.low + analytics.timeInRange.episodes.severeLow;
 
-      // Calculate CGM active percentage based on date range
+      // Calculate CGM active percentage using enhanced data quality assessment
+      // This properly handles different sensor types and their expected reading intervals
+      const entries = readings.map(reading => ({
+        _id: reading._id,
+        type: 'sgv' as const,
+        mills: reading.mills,
+        date: reading.date,
+        mgdl: reading.sgv,
+        direction: reading.direction
+      }));
+
+      const cgmActivePercent = calculateCGMActivePercent(
+        entries,
+        startDate,
+        endDate,
+        'GENERIC_5MIN' // Use sensor type from analytics config when available
+      );
+
+      // Calculate total days for display
       const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
-      const expectedReadings = totalDays * 288; // 288 readings per day (5-minute intervals)
-      const cgmActivePercent = Math.round((readings.length / expectedReadings) * 100);
 
       // Get daily breakdown for the date range (instead of hard-coded 6 days)
       const dailyStats: DayStats[] = [];
@@ -187,10 +219,9 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
         const dayStats = await processDayStats(fetch, new Date(currentDate));
         dailyStats.push(dayStats);
         currentDate.setDate(currentDate.getDate() + 1);
-      }
-
-      // Use the primary date (for single day) or date range
-      const primaryDate = dailyStats.length === 1 ? dailyStats[0].date : null;      const dailyStatsData = {
+      }      // Use the primary date (for single day) or date range
+      const primaryDate = dailyStats.length === 1 ? dailyStats[0].date : null;
+      const dailyStatsData = {
         date: primaryDate ? primaryDate.toISOString().split("T")[0] : `${startDate.toISOString().split("T")[0]} to ${endDate.toISOString().split("T")[0]}`,
         timeInRangePercent: analytics.timeInRange.percentages.target,
         averageGlucose: Math.round(analytics.basicStats.mean),
@@ -200,11 +231,10 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
         lowEvents,
         cgmActivePercent: Math.min(100, cgmActivePercent), // Cap at 100%
         estimatedA1c,
-        timeInRanges: convertTIRFormat(analytics),
-        recentDaysStats: dailyStats, // Renamed for clarity - contains all days in range
+        timeInRanges: convertTIRFormat(analytics),        recentDaysStats: dailyStats, // Renamed for clarity - contains all days in range
         glucoseReadings: readings.map(reading => reading.sgv),
         // Include full glycemic variability metrics
-        glycemicVariability: analytics.glycemicVariability,
+        glycemicVariability: analytics.glycemicVariability
       };
 
       return {
@@ -215,12 +245,12 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
           to: endDate.toLocaleDateString(),
           days: totalDays
         },
+        analytics,
         stats: dailyStatsData,
         totalReadings: readings.length
-      };
-
-    } catch (error) {
-      console.error('Error fetching daily stats data:', error);      return {
+      };    } catch (error) {
+      console.error('Error fetching daily stats data:', error);
+      return {
         reportName: "Daily Statistics Report",
         generatedDate: new Date().toLocaleDateString(),
         dateRange: {
