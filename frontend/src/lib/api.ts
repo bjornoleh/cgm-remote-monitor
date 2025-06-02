@@ -32,8 +32,7 @@ function handleDemoRequest<T>(options: ApiCallOptions): Promise<ApiResponse<T>> 
 
 	// Add a small delay to simulate network request
 	return new Promise((resolve) => {
-		setTimeout(() => {
-			let data: unknown;
+		setTimeout(() => {			let data: unknown;
 
 			if (endpoint.includes('/api/v1/entries') || endpoint.includes('/entries.json')) {
 				data = demoData.entries();
@@ -43,6 +42,15 @@ function handleDemoRequest<T>(options: ApiCallOptions): Promise<ApiResponse<T>> 
 				data = demoData.devicestatus();
 			} else if (endpoint.includes('/api/v1/status') || endpoint === '/api/v1/status.json') {
 				data = demoData.status();
+			} else if (endpoint.includes('/api/v1/profile') || endpoint.includes('/profile.json')) {
+				data = demoData.profile();
+			} else if (endpoint.includes('/api/v1/food/quickpicks') || endpoint.includes('/food/quickpicks')) {
+				data = demoData.quickpicks();
+			} else if (endpoint.includes('/api/v1/food') || endpoint.includes('/food.json')) {
+				// Combine regular foods and quickpicks for the main food endpoint
+				const foods = demoData.food();
+				const quickpicks = demoData.quickpicks();
+				data = [...foods, ...quickpicks];
 			} else if (endpoint.includes('hourly-stats')) {
 				data = demoData.hourlyStats();
 			} else {

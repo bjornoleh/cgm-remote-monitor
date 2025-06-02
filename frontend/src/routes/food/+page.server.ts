@@ -1,57 +1,58 @@
 import type { PageServerLoad } from './$types';
 import type { FoodRecord, QuickPickRecord } from './types';
+import { apiGet } from '$lib/api';
 
-export const load: PageServerLoad = async ({ url, fetch }) => {
-	try {		// Get the main Nightscout server URL from environment or default to localhost
-		const nightscoutUrl = process.env.NIGHTSCOUT_URL || 'http://localhost:1337';
-				// For local development, we can skip SSL verification setup since we're using HTTP
-		// Fetch food database from the main Nightscout server
-		const response = await fetch(`${nightscoutUrl}/api/v1/food.json`);
+export const load: PageServerLoad = async ({ fetch }) => {
+	try {		// Use the centralized API function to fetch food data
+		// This automatically handles demo mode and authentication
+		const response = await apiGet<(FoodRecord | QuickPickRecord)[]>(fetch, '/api/v1/food.json', {
+			throwOnError: false
+		});
 
-		if (!response.ok) {
-			throw new Error(`Failed to fetch food data: ${response.status}`);
+		if (!response.success || !response.data) {
+			throw new Error(`Failed to fetch food data: ${response.error || 'Unknown error'}`);
 		}
 
-		const records = await response.json();
-
+		const records = response.data;
 		// Separate food records and quickpicks, and build categories
 		const foodList: FoodRecord[] = [];
 		const quickPickList: QuickPickRecord[] = [];
 		const categories: Record<string, Record<string, boolean>> = {};
 
-		records.forEach((record: any) => {
+		records.forEach((record: FoodRecord | QuickPickRecord) => {
 			if (record.type === 'food') {
-				foodList.push(record);
+				foodList.push(record as FoodRecord);
 
 				// Build categories structure
-				if (record.category && !categories[record.category]) {
-					categories[record.category] = {};
+				const foodRecord = record as FoodRecord;
+				if (foodRecord.category && !categories[foodRecord.category]) {
+					categories[foodRecord.category] = {};
 				}
-				if (record.category && record.subcategory) {
-					categories[record.category][record.subcategory] = true;
+				if (foodRecord.category && foodRecord.subcategory) {
+					categories[foodRecord.category][foodRecord.subcategory] = true;
 				}
 			} else if (record.type === 'quickpick') {
+				const quickPickRecord = record as QuickPickRecord;
 				// Calculate carbs for quickpick
-				record.carbs = 0;
-				if (record.foods) {
-					record.foods.forEach((food: any) => {
-						record.carbs += food.carbs * (food.portions || 1);
+				quickPickRecord.carbs = 0;
+				if (quickPickRecord.foods) {
+					quickPickRecord.foods.forEach((food) => {
+						quickPickRecord.carbs += food.carbs * (food.portions || 1);
 					});
 				} else {
-					record.foods = [];
+					quickPickRecord.foods = [];
 				}
-				quickPickList.push(record);
+				quickPickList.push(quickPickRecord);
 			}
 		});
 
 		// Sort quickpicks by position
 		quickPickList.sort((a, b) => (a.position || 99999) - (b.position || 99999));
-
 		return {
 			foodList,
 			quickPickList,
 			categories,
-			nightscoutUrl
+			nightscoutUrl: process.env.NIGHTSCOUT_URL || 'http://localhost:1337'
 		};
 	} catch (error) {
 		console.error('Error loading food database:', error);

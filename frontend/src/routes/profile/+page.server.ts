@@ -1,16 +1,15 @@
 import { error, fail, type Actions } from '@sveltejs/kit';
+import { apiGet, apiPost } from '$lib/api.js';
 
 export const load = async ({ fetch }) => {
   try {
-    // Load profile records
-    const profileResponse = await fetch('/api/v1/profile/');
-    let mongoRecords = [];
-
-    if (profileResponse.ok) {
-      mongoRecords = await profileResponse.json();
+    // Load profile records using API helper
+    const profileResponse = await apiGet(fetch, '/api/v1/profile/', {
+      throwOnError: false
+    });    let mongoRecords: unknown[] = [];
+    if (profileResponse.success && profileResponse.data) {
+      mongoRecords = Array.isArray(profileResponse.data) ? profileResponse.data : [profileResponse.data];
     }
-
-
 
     return {
       mongoRecords,
@@ -29,18 +28,22 @@ export const actions: Actions = {
 
       if (!profileData) {
         return fail(400, { error: 'Profile data is required' });
+      }      // Parse the JSON string to pass as proper object to API helper
+      let parsedProfileData;
+      try {
+        parsedProfileData = JSON.parse(profileData as string);
+      } catch {
+        return fail(400, { error: 'Invalid profile data format' });
       }
 
-      const response = await fetch('/api/v1/profile/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: profileData as string
+      const response = await apiPost(fetch, '/api/v1/profile/', parsedProfileData, {
+        throwOnError: false
       });
 
-      if (!response.ok) {
-        return fail(response.status, { error: 'Failed to save profile' });
+      if (!response.success) {
+        return fail(response.status || 500, {
+          error: response.error || 'Failed to save profile'
+        });
       }
 
       return {

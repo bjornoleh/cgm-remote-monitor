@@ -1,5 +1,40 @@
 // Demo data generator for development without live server connection
 import type { Entry, Treatment, DeviceStatus, ServerSettings } from '../stores/client-state.svelte.ts';
+import type { FoodRecord, QuickPickRecord } from '../../routes/food/types.ts';
+
+// Profile interfaces
+interface TimeValue {
+  time: string;
+  value: number;
+}
+
+interface ProfileData {
+  dia: number;
+  carbs_hr: number;
+  delay: number;
+  basal: TimeValue[];
+  carbratio: TimeValue[];
+  sens: TimeValue[];
+  target_low: TimeValue[];
+  target_high: TimeValue[];
+  timezone: string;
+  units: string;
+  carbs_hr_high: number;
+  carbs_hr_medium: number;
+  carbs_hr_low: number;
+  delay_high: number;
+  delay_medium: number;
+  delay_low: number;
+}
+
+interface Profile {
+  _id: string;
+  defaultProfile: string;
+  startDate: string;
+  mills: number;
+  created_at: string;
+  store: Record<string, ProfileData>;
+}
 
 // Add array.random() method for convenience
 declare global {
@@ -358,17 +393,279 @@ function generateStatus(): ServerSettings & {
   };
 }
 
-// Add array.random() method for convenience
-declare global {
-  interface Array<T> {
-    random(): T;
-  }
+// Generate profile data matching Nightscout profile structure
+function generateProfile(): Profile {
+  const now = Date.now();
+  const today = new Date();
+
+  // Generate realistic basal rates throughout the day (typical patterns)
+  const basalRates = [
+    { time: '00:00', value: 0.8 },   // Midnight - lower
+    { time: '02:00', value: 0.7 },   // Early morning - lowest
+    { time: '04:00', value: 0.9 },   // Dawn phenomenon starts
+    { time: '06:00', value: 1.1 },   // Dawn phenomenon peak
+    { time: '08:00', value: 1.0 },   // Morning
+    { time: '11:00', value: 0.9 },   // Late morning
+    { time: '14:00', value: 0.95 },  // Afternoon
+    { time: '17:00', value: 1.0 },   // Evening
+    { time: '20:00', value: 0.9 },   // Night
+    { time: '22:00', value: 0.85 }   // Late night
+  ];
+
+  // Generate insulin-to-carb ratios (I:C) - typically higher (more insulin) in morning
+  const carbRatios = [
+    { time: '00:00', value: 12 },    // Midnight
+    { time: '06:00', value: 8 },     // Breakfast - more insulin needed
+    { time: '11:00', value: 10 },    // Lunch
+    { time: '17:00', value: 12 },    // Dinner
+    { time: '21:00', value: 14 }     // Late evening snacks
+  ];
+
+  // Generate insulin sensitivity factors (ISF) - how much 1 unit drops BG
+  const insulinSensitivity = [
+    { time: '00:00', value: 45 },    // Midnight
+    { time: '06:00', value: 35 },    // Morning - less sensitive (dawn phenomenon)
+    { time: '11:00', value: 40 },    // Late morning
+    { time: '17:00', value: 45 },    // Evening
+    { time: '21:00', value: 50 }     // Night - more sensitive
+  ];
+
+  // Generate target BG ranges
+  const targetLow = [
+    { time: '00:00', value: 100 },
+    { time: '06:00', value: 90 },    // Tighter morning target
+    { time: '22:00', value: 110 }    // Higher nighttime target for safety
+  ];
+
+  const targetHigh = [
+    { time: '00:00', value: 120 },
+    { time: '06:00', value: 110 },   // Tighter morning target
+    { time: '22:00', value: 140 }    // Higher nighttime target for safety
+  ];
+
+  // Create the main profile object
+  const profileData = {
+    dia: 4, // Duration of insulin action (hours)
+    carbs_hr: 20, // Carbs absorbed per hour
+    delay: 20, // Carb absorption delay (minutes)
+
+    // Time-based arrays
+    basal: basalRates,
+    carbratio: carbRatios,
+    sens: insulinSensitivity,
+    target_low: targetLow,
+    target_high: targetHigh,
+
+    // Additional fields for advanced features
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+    units: 'mg/dl',
+
+    // Extended carb settings (for COB plugin)
+    carbs_hr_high: 30,   // Fast-acting carbs (candy, juice)
+    carbs_hr_medium: 20, // Medium carbs (bread, pasta)
+    carbs_hr_low: 10,    // Slow carbs (oats, beans)
+
+    delay_high: 10,      // Delay for fast carbs
+    delay_medium: 20,    // Delay for medium carbs
+    delay_low: 30        // Delay for slow carbs
+  };
+
+  // Create the full profile structure as used by Nightscout
+  const fullProfile = {
+    _id: `demo_profile_${now}`,
+    defaultProfile: 'Default',
+    startDate: today.toISOString(),
+    mills: now,
+    created_at: today.toISOString(),
+    store: {
+      'Default': profileData,
+      'Exercise': {
+        // Exercise profile with reduced basal rates
+        ...profileData,
+        basal: basalRates.map(rate => ({
+          ...rate,
+          value: Math.round((rate.value * 0.75) * 100) / 100 // 25% reduction
+        })),
+        target_low: targetLow.map(target => ({
+          ...target,
+          value: target.value + 20 // Higher targets during exercise
+        })),
+        target_high: targetHigh.map(target => ({
+          ...target,
+          value: target.value + 30
+        }))
+      },
+      'Sick Day': {
+        // Sick day profile with increased basal rates
+        ...profileData,
+        basal: basalRates.map(rate => ({
+          ...rate,
+          value: Math.round((rate.value * 1.2) * 100) / 100 // 20% increase
+        })),
+        sens: insulinSensitivity.map(sens => ({
+          ...sens,
+          value: Math.round(sens.value * 0.8) // More aggressive corrections
+        }))
+      }
+    }
+  };
+
+  return fullProfile;
 }
 
-if (!Array.prototype.random) {
-  Array.prototype.random = function() {
-    return this[Math.floor(Math.random() * this.length)];
-  };
+// Generate realistic food database entries
+function generateFoodItems(count: number = 100): FoodRecord[] {
+  const foodItems: FoodRecord[] = [];
+  const now = Date.now();
+
+  // Define food data with realistic nutritional information
+  const foodDatabase = [
+    // Fruits
+    { category: 'Fruits', subcategory: 'Citrus', name: 'Orange', portion: 150, carbs: 12, fat: 0, protein: 1, gi: 2, unit: 'g' },
+    { category: 'Fruits', subcategory: 'Citrus', name: 'Grapefruit', portion: 200, carbs: 11, fat: 0, protein: 1, gi: 1, unit: 'g' },
+    { category: 'Fruits', subcategory: 'Berries', name: 'Strawberries', portion: 100, carbs: 6, fat: 0, protein: 1, gi: 2, unit: 'g' },
+    { category: 'Fruits', subcategory: 'Berries', name: 'Blueberries', portion: 100, carbs: 11, fat: 0, protein: 1, gi: 2, unit: 'g' },
+    { category: 'Fruits', subcategory: 'Stone Fruits', name: 'Apple', portion: 150, carbs: 19, fat: 0, protein: 0, gi: 2, unit: 'g' },
+    { category: 'Fruits', subcategory: 'Tropical', name: 'Banana', portion: 120, carbs: 23, fat: 0, protein: 1, gi: 2, unit: 'g' },
+
+    // Vegetables
+    { category: 'Vegetables', subcategory: 'Leafy Greens', name: 'Spinach', portion: 100, carbs: 4, fat: 0, protein: 3, gi: 1, unit: 'g' },
+    { category: 'Vegetables', subcategory: 'Cruciferous', name: 'Broccoli', portion: 100, carbs: 7, fat: 0, protein: 3, gi: 1, unit: 'g' },
+    { category: 'Vegetables', subcategory: 'Root Vegetables', name: 'Carrots', portion: 100, carbs: 10, fat: 0, protein: 1, gi: 3, unit: 'g' },
+    { category: 'Vegetables', subcategory: 'Legumes', name: 'Black Beans', portion: 100, carbs: 23, fat: 1, protein: 9, gi: 1, unit: 'g' },
+
+    // Grains
+    { category: 'Grains', subcategory: 'Whole Grains', name: 'Brown Rice', portion: 100, carbs: 23, fat: 2, protein: 5, gi: 2, unit: 'g' },
+    { category: 'Grains', subcategory: 'Refined Grains', name: 'White Rice', portion: 100, carbs: 28, fat: 0, protein: 3, gi: 3, unit: 'g' },
+    { category: 'Grains', subcategory: 'Whole Grains', name: 'Oatmeal', portion: 100, carbs: 12, fat: 2, protein: 2, gi: 2, unit: 'g' },
+    { category: 'Grains', subcategory: 'Refined Grains', name: 'White Bread', portion: 30, carbs: 15, fat: 1, protein: 3, gi: 3, unit: 'g' },
+
+    // Protein
+    { category: 'Protein', subcategory: 'Poultry', name: 'Chicken Breast', portion: 100, carbs: 0, fat: 3, protein: 31, gi: 1, unit: 'g' },
+    { category: 'Protein', subcategory: 'Fish', name: 'Salmon', portion: 100, carbs: 0, fat: 13, protein: 25, gi: 1, unit: 'g' },
+    { category: 'Protein', subcategory: 'Plant-Based', name: 'Tofu', portion: 100, carbs: 2, fat: 8, protein: 15, gi: 1, unit: 'g' },
+    { category: 'Protein', subcategory: 'Meat', name: 'Ground Beef', portion: 100, carbs: 0, fat: 20, protein: 26, gi: 1, unit: 'g' },
+
+    // Dairy
+    { category: 'Dairy', subcategory: 'Milk', name: 'Whole Milk', portion: 240, carbs: 11, fat: 8, protein: 8, gi: 1, unit: 'ml' },
+    { category: 'Dairy', subcategory: 'Cheese', name: 'Cheddar Cheese', portion: 30, carbs: 1, fat: 9, protein: 7, gi: 1, unit: 'g' },
+    { category: 'Dairy', subcategory: 'Yogurt', name: 'Greek Yogurt', portion: 170, carbs: 6, fat: 0, protein: 17, gi: 1, unit: 'g' },
+
+    // Fats
+    { category: 'Fats', subcategory: 'Nuts', name: 'Almonds', portion: 30, carbs: 6, fat: 14, protein: 6, gi: 1, unit: 'g' },
+    { category: 'Fats', subcategory: 'Oils', name: 'Olive Oil', portion: 15, carbs: 0, fat: 14, protein: 0, gi: 1, unit: 'ml' },
+    { category: 'Fats', subcategory: 'Seeds', name: 'Chia Seeds', portion: 15, carbs: 6, fat: 5, protein: 3, gi: 1, unit: 'g' },
+
+    // Snacks and treats
+    { category: 'Snacks', subcategory: 'Sweet', name: 'Dark Chocolate', portion: 20, carbs: 13, fat: 6, protein: 2, gi: 2, unit: 'g' },
+    { category: 'Snacks', subcategory: 'Savory', name: 'Crackers', portion: 30, carbs: 20, fat: 3, protein: 3, gi: 3, unit: 'g' },
+    { category: 'Beverages', subcategory: 'Juice', name: 'Orange Juice', portion: 240, carbs: 26, fat: 0, protein: 2, gi: 3, unit: 'ml' }
+  ];
+
+  // Generate the requested number of food items
+  for (let i = 0; i < count; i++) {
+    const baseFood = foodDatabase[i % foodDatabase.length];
+    const variation = Math.floor(i / foodDatabase.length) + 1;
+
+    // Add some variation to the base foods
+    const portionVariation = 1 + (Math.random() - 0.5) * 0.3; // ±15% variation
+    const carbVariation = 1 + (Math.random() - 0.5) * 0.2; // ±10% variation
+
+    const foodItem: FoodRecord = {
+      _id: `food_${now}_${i}`,
+      type: 'food',
+      category: baseFood.category,
+      subcategory: baseFood.subcategory,
+      name: variation > 1 ? `${baseFood.name} (${variation})` : baseFood.name,
+      portion: Math.round(baseFood.portion * portionVariation),
+      carbs: Math.round(baseFood.carbs * carbVariation),
+      fat: baseFood.fat,
+      protein: baseFood.protein,
+      energy: Math.round((baseFood.carbs * carbVariation * 4 + baseFood.fat * 9 + baseFood.protein * 4) * 4.184), // Convert to kJ
+      gi: baseFood.gi,
+      unit: baseFood.unit
+    };
+
+    foodItems.push(foodItem);
+  }
+
+  return foodItems;
+}
+
+// Generate quick pick combinations
+function generateQuickPicks(count: number = 10): QuickPickRecord[] {
+  const quickPicks: QuickPickRecord[] = [];
+  const now = Date.now();
+
+  const quickPickTemplates = [
+    {
+      name: 'Breakfast Combo',
+      foods: [
+        { name: 'Oatmeal', carbs: 30, portions: 1 },
+        { name: 'Banana', carbs: 23, portions: 1 },
+        { name: 'Whole Milk', carbs: 11, portions: 1 }
+      ]
+    },
+    {
+      name: 'Lunch Special',
+      foods: [
+        { name: 'Chicken Breast', carbs: 0, portions: 1 },
+        { name: 'Brown Rice', carbs: 45, portions: 1 },
+        { name: 'Broccoli', carbs: 7, portions: 1 }
+      ]
+    },
+    {
+      name: 'Snack Attack',
+      foods: [
+        { name: 'Apple', carbs: 19, portions: 1 },
+        { name: 'Cheddar Cheese', carbs: 1, portions: 1 }
+      ]
+    },
+    {
+      name: 'Pasta Night',
+      foods: [
+        { name: 'Whole Wheat Pasta', carbs: 37, portions: 1 },
+        { name: 'Marinara Sauce', carbs: 8, portions: 1 },
+        { name: 'Ground Beef', carbs: 0, portions: 1 }
+      ]
+    }
+  ];
+
+  for (let i = 0; i < count; i++) {
+    const template = quickPickTemplates[i % quickPickTemplates.length];
+    const variation = Math.floor(i / quickPickTemplates.length) + 1;
+
+    const totalCarbs = template.foods.reduce((sum, food) => sum + food.carbs * food.portions, 0);
+
+    const quickPick: QuickPickRecord = {
+      _id: `quickpick_${now}_${i}`,
+      type: 'quickpick',
+      name: variation > 1 ? `${template.name} ${variation}` : template.name,
+      foods: template.foods.map((food, index) => ({
+        _id: `qp_food_${now}_${i}_${index}`,
+        type: 'food' as const,
+        category: 'Quick Pick',
+        subcategory: 'Combo',
+        name: food.name,
+        portion: 100,
+        carbs: food.carbs,
+        fat: 0,
+        protein: 0,
+        energy: food.carbs * 4 * 4.184,
+        gi: 2,
+        unit: 'g',
+        portions: food.portions
+      })),
+      carbs: totalCarbs,
+      hideafteruse: i % 3 === 0, // Every 3rd quick pick hides after use
+      hidden: false,
+      position: i
+    };
+
+    quickPicks.push(quickPick);
+  }
+
+  return quickPicks;
 }
 
 export const demoData = {
@@ -376,12 +673,18 @@ export const demoData = {
   generateTreatments,
   generateDeviceStatus,
   generateStatus,
+  generateProfile,
+  generateFoodItems,
+  generateQuickPicks,
 
   // Pre-generated data sets
   entries: () => generateSGVEntries(),
   treatments: () => generateTreatments(),
   devicestatus: () => generateDeviceStatus(),
   status: () => generateStatus(),
+  profile: () => generateProfile(),
+  food: () => generateFoodItems(),
+  quickpicks: () => generateQuickPicks(),
 
   // Hourly stats (similar to example-hourly-stats.json)
   hourlyStats: () => {
