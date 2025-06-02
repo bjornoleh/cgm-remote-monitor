@@ -5,31 +5,38 @@
   import { Label } from "$lib/components/ui/label";
   import { Checkbox } from "$lib/components/ui/checkbox";
   import { Separator } from "$lib/components/ui/separator";
-  import { Trash2, MoveUp, GripVertical } from "lucide-svelte";
-  import type { QuickPickRecord, QuickPickFood, FoodRecord } from "./types";
-  import { createEventDispatcher } from "svelte";
+  import { Trash2, MoveUp } from "lucide-svelte";
+  import type { QuickPickRecord, FoodRecord } from "./types";
 
   interface Props {
     quickPick: QuickPickRecord;
     index: number;
+    onDelete: (index: number) => void;
+    onMoveUp: (index: number) => void;
+    onUpdateName: (index: number, name: string) => void;
+    onUpdateHidden: (index: number, hidden: boolean) => void;
+    onUpdateHideAfterUse: (index: number, hideAfterUse: boolean) => void;
+    onDeleteFood: (quickPickIndex: number, foodIndex: number) => void;
+    onUpdatePortions: (
+      quickPickIndex: number,
+      foodIndex: number,
+      portions: number
+    ) => void;
+    onDrop: (quickPickIndex: number, food: FoodRecord) => void;
   }
 
-  let { quickPick, index }: Props = $props();
-
-  const dispatch = createEventDispatcher<{
-    delete: { index: number };
-    moveUp: { index: number };
-    updateName: { index: number; name: string };
-    updateHidden: { index: number; hidden: boolean };
-    updateHideAfterUse: { index: number; hideAfterUse: boolean };
-    deleteFood: { quickPickIndex: number; foodIndex: number };
-    updatePortions: {
-      quickPickIndex: number;
-      foodIndex: number;
-      portions: number;
-    };
-    drop: { quickPickIndex: number; food: FoodRecord };
-  }>();
+  let {
+    quickPick,
+    index,
+    onDelete,
+    onMoveUp,
+    onUpdateName,
+    onUpdateHidden,
+    onUpdateHideAfterUse,
+    onDeleteFood,
+    onUpdatePortions,
+    onDrop,
+  }: Props = $props();
 
   let isDragOver = $state(false);
 
@@ -40,9 +47,8 @@
     try {
       const foodData = event.dataTransfer?.getData("application/json");
       if (!foodData) return;
-
       const food: FoodRecord = JSON.parse(foodData);
-      dispatch("drop", { quickPickIndex: index, food });
+      onDrop(index, food);
     } catch (error) {
       console.error("Error handling drop:", error);
     }
@@ -66,36 +72,35 @@
       isDragOver = false;
     }
   }
-
   function deleteQuickPick() {
-    dispatch("delete", { index });
+    onDelete(index);
   }
 
   function moveToTop() {
-    dispatch("moveUp", { index });
+    onMoveUp(index);
   }
 
   function updateName(event: Event) {
     const target = event.target as HTMLInputElement;
-    dispatch("updateName", { index, name: target.value });
+    onUpdateName(index, target.value);
   }
 
   function updateHidden(checked: boolean) {
-    dispatch("updateHidden", { index, hidden: checked });
+    onUpdateHidden(index, checked);
   }
 
   function updateHideAfterUse(checked: boolean) {
-    dispatch("updateHideAfterUse", { index, hideAfterUse: checked });
+    onUpdateHideAfterUse(index, checked);
   }
 
   function deleteFood(foodIndex: number) {
-    dispatch("deleteFood", { quickPickIndex: index, foodIndex });
+    onDeleteFood(index, foodIndex);
   }
 
   function updatePortions(foodIndex: number, event: Event) {
     const target = event.target as HTMLInputElement;
     const portions = parseFloat(target.value) || 0;
-    dispatch("updatePortions", { quickPickIndex: index, foodIndex, portions });
+    onUpdatePortions(index, foodIndex, portions);
   }
 </script>
 
@@ -131,8 +136,8 @@
         <Label for="name-{index}" class="whitespace-nowrap">Name:</Label>
         <Input
           id="name-{index}"
-          bind:value={quickPick.name}
-          onchange={updateName}
+          value={quickPick.name}
+          oninput={updateName}
           class="w-32"
           placeholder="Quick pick name"
         />
@@ -193,7 +198,7 @@
               <Input
                 type="number"
                 value={food.portions}
-                onchange={(e) => updatePortions(foodIndex, e)}
+                oninput={(e) => updatePortions(foodIndex, e)}
                 class="w-16 h-6 text-xs text-center"
                 min="0"
                 step="0.1"

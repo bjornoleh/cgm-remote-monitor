@@ -9,34 +9,47 @@
   import { Label } from "$lib/components/ui/label";
   import { Checkbox } from "$lib/components/ui/checkbox";
   import { Plus } from "lucide-svelte";
-  import { createEventDispatcher } from "svelte";
   import QuickPickItem from "./QuickPickItem.svelte";
   import type { QuickPickRecord, FoodRecord } from "./types";
 
   interface Props {
     quickPickList: QuickPickRecord[];
     showHidden: boolean;
+    onCreateQuickPick: () => void;
+    onSaveQuickPicks: () => void;
+    onUpdateShowHidden: (showHidden: boolean) => void;
+    onQuickPickDelete: (index: number) => void;
+    onQuickPickMoveUp: (index: number) => void;
+    onQuickPickUpdateName: (index: number, name: string) => void;
+    onQuickPickUpdateHidden: (index: number, hidden: boolean) => void;
+    onQuickPickUpdateHideAfterUse: (
+      index: number,
+      hideAfterUse: boolean
+    ) => void;
+    onQuickPickDeleteFood: (quickPickIndex: number, foodIndex: number) => void;
+    onQuickPickUpdatePortions: (
+      quickPickIndex: number,
+      foodIndex: number,
+      portions: number
+    ) => void;
+    onQuickPickDrop: (quickPickIndex: number, food: FoodRecord) => void;
   }
 
-  let { quickPickList, showHidden }: Props = $props();
-
-  const dispatch = createEventDispatcher<{
-    createQuickPick: void;
-    saveQuickPicks: void;
-    updateShowHidden: { showHidden: boolean };
-    quickPickDelete: { index: number };
-    quickPickMoveUp: { index: number };
-    quickPickUpdateName: { index: number; name: string };
-    quickPickUpdateHidden: { index: number; hidden: boolean };
-    quickPickUpdateHideAfterUse: { index: number; hideAfterUse: boolean };
-    quickPickDeleteFood: { quickPickIndex: number; foodIndex: number };
-    quickPickUpdatePortions: {
-      quickPickIndex: number;
-      foodIndex: number;
-      portions: number;
-    };
-    quickPickDrop: { quickPickIndex: number; food: FoodRecord };
-  }>();
+  let {
+    quickPickList,
+    showHidden,
+    onCreateQuickPick,
+    onSaveQuickPicks,
+    onUpdateShowHidden,
+    onQuickPickDelete,
+    onQuickPickMoveUp,
+    onQuickPickUpdateName,
+    onQuickPickUpdateHidden,
+    onQuickPickUpdateHideAfterUse,
+    onQuickPickDeleteFood,
+    onQuickPickUpdatePortions,
+    onQuickPickDrop,
+  }: Props = $props();
 
   // Derived state
   let hiddenCount = $derived.by(() => {
@@ -48,89 +61,16 @@
       ? quickPickList
       : quickPickList.filter((qp) => !qp.hidden);
   });
-
   function handleCreateQuickPick() {
-    dispatch("createQuickPick");
+    onCreateQuickPick();
   }
 
   function handleSaveQuickPicks() {
-    dispatch("saveQuickPicks");
+    onSaveQuickPicks();
   }
 
   function handleShowHiddenChange(checked: boolean) {
-    dispatch("updateShowHidden", { showHidden: checked });
-  }
-
-  function handleQuickPickDelete({ detail }: { detail: { index: number } }) {
-    dispatch("quickPickDelete", { index: detail.index });
-  }
-
-  function handleQuickPickMoveUp({ detail }: { detail: { index: number } }) {
-    dispatch("quickPickMoveUp", { index: detail.index });
-  }
-
-  function handleQuickPickUpdateName({
-    detail,
-  }: {
-    detail: { index: number; name: string };
-  }) {
-    dispatch("quickPickUpdateName", { index: detail.index, name: detail.name });
-  }
-
-  function handleQuickPickUpdateHidden({
-    detail,
-  }: {
-    detail: { index: number; hidden: boolean };
-  }) {
-    dispatch("quickPickUpdateHidden", {
-      index: detail.index,
-      hidden: detail.hidden,
-    });
-  }
-
-  function handleQuickPickUpdateHideAfterUse({
-    detail,
-  }: {
-    detail: { index: number; hideAfterUse: boolean };
-  }) {
-    dispatch("quickPickUpdateHideAfterUse", {
-      index: detail.index,
-      hideAfterUse: detail.hideAfterUse,
-    });
-  }
-
-  function handleQuickPickDeleteFood({
-    detail,
-  }: {
-    detail: { quickPickIndex: number; foodIndex: number };
-  }) {
-    dispatch("quickPickDeleteFood", {
-      quickPickIndex: detail.quickPickIndex,
-      foodIndex: detail.foodIndex,
-    });
-  }
-
-  function handleQuickPickUpdatePortions({
-    detail,
-  }: {
-    detail: { quickPickIndex: number; foodIndex: number; portions: number };
-  }) {
-    dispatch("quickPickUpdatePortions", {
-      quickPickIndex: detail.quickPickIndex,
-      foodIndex: detail.foodIndex,
-      portions: detail.portions,
-    });
-  }
-
-  function handleQuickPickDrop({
-    detail,
-  }: {
-    detail: { quickPickIndex: number; food: FoodRecord };
-  }) {
-    dispatch("quickPickDrop", {
-      quickPickIndex: detail.quickPickIndex,
-      food: detail.food,
-    });
+    onUpdateShowHidden(checked);
   }
 </script>
 
@@ -165,14 +105,14 @@
         <QuickPickItem
           {quickPick}
           {index}
-          on:delete={handleQuickPickDelete}
-          on:moveUp={handleQuickPickMoveUp}
-          on:updateName={handleQuickPickUpdateName}
-          on:updateHidden={handleQuickPickUpdateHidden}
-          on:updateHideAfterUse={handleQuickPickUpdateHideAfterUse}
-          on:deleteFood={handleQuickPickDeleteFood}
-          on:updatePortions={handleQuickPickUpdatePortions}
-          on:drop={handleQuickPickDrop}
+          onDelete={onQuickPickDelete}
+          onMoveUp={onQuickPickMoveUp}
+          onUpdateName={onQuickPickUpdateName}
+          onUpdateHidden={onQuickPickUpdateHidden}
+          onUpdateHideAfterUse={onQuickPickUpdateHideAfterUse}
+          onDeleteFood={onQuickPickDeleteFood}
+          onUpdatePortions={onQuickPickUpdatePortions}
+          onDrop={onQuickPickDrop}
         />
       {/each}
     </div>

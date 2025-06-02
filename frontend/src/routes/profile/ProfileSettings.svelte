@@ -7,13 +7,13 @@
   } from "$lib/components/ui/card";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
-  import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-  } from "$lib/components/ui/select";
+  import * as Command from "$lib/components/ui/command";
+  import * as Popover from "$lib/components/ui/popover";
+  import { Button } from "$lib/components/ui/button";
   import { Switch } from "$lib/components/ui/switch";
+  import { Check, ChevronsUpDown } from "lucide-svelte";
+  import { tick } from "svelte";
+  import { cn } from "$lib/utils";
 
   interface Props {
     selectedTimezone: string;
@@ -28,7 +28,6 @@
     delayLow: string;
     onUpdate: () => void;
   }
-
   let {
     selectedTimezone = $bindable(),
     diaInput = $bindable(),
@@ -42,6 +41,27 @@
     delayLow = $bindable(),
     onUpdate,
   }: Props = $props();
+
+  // Combobox state
+  let timezoneOpen = $state(false);
+  let timezoneTriggerRef = $state<HTMLButtonElement>(null!);
+
+  // Get all available timezones
+  let availableTimezones = $derived(Intl.supportedValuesOf("timeZone"));
+  let selectedTimezoneLabel = $derived(
+    selectedTimezone || "Select timezone..."
+  );
+
+  function closeTimezoneAndFocus() {
+    timezoneOpen = false;
+    tick().then(() => timezoneTriggerRef.focus());
+  }
+
+  function selectTimezone(timezone: string) {
+    selectedTimezone = timezone;
+    onUpdate();
+    closeTimezoneAndFocus();
+  }
 </script>
 
 <Card>
@@ -53,19 +73,46 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div class="space-y-2">
         <Label>Timezone:</Label>
-        <Select
-          onValueChange={(value) => {
-            selectedTimezone = value;
-            onUpdate();
-          }}
-        >
-          <SelectTrigger>Select timezone</SelectTrigger>
-          <SelectContent>
-            {#each Intl.supportedValuesOf("timeZone") as tz}
-              <SelectItem value={tz}>{tz}</SelectItem>
-            {/each}
-          </SelectContent>
-        </Select>
+        <Popover.Root bind:open={timezoneOpen}>
+          <Popover.Trigger bind:ref={timezoneTriggerRef}>
+            {#snippet child({ props })}
+              <Button
+                variant="outline"
+                class="w-full justify-between"
+                {...props}
+                role="combobox"
+                aria-expanded={timezoneOpen}
+              >
+                {selectedTimezoneLabel}
+                <ChevronsUpDown class="ml-2 size-4 shrink-0 opacity-50" />
+              </Button>
+            {/snippet}
+          </Popover.Trigger>
+          <Popover.Content class="w-[--radix-popover-trigger-width] p-0">
+            <Command.Root>
+              <Command.Input placeholder="Search timezones..." />
+              <Command.List>
+                <Command.Empty>No timezone found.</Command.Empty>
+                <Command.Group>
+                  {#each availableTimezones as timezone}
+                    <Command.Item
+                      value={timezone}
+                      onSelect={() => selectTimezone(timezone)}
+                    >
+                      <Check
+                        class={cn(
+                          "mr-2 size-4",
+                          selectedTimezone !== timezone && "text-transparent"
+                        )}
+                      />
+                      {timezone}
+                    </Command.Item>
+                  {/each}
+                </Command.Group>
+              </Command.List>
+            </Command.Root>
+          </Popover.Content>
+        </Popover.Root>
       </div>
 
       <div class="space-y-2">

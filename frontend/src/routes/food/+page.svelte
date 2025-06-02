@@ -223,42 +223,34 @@
       status = "Error";
     }
   }
-
   // Event handlers for FoodList component
-  function handleEditFood({ detail }: { detail: { food: FoodRecord } }) {
-    editFood(detail.food);
+  function handleEditFood(food: FoodRecord) {
+    editFood(food);
   }
 
-  function handleDeleteFood({ detail }: { detail: { food: FoodRecord } }) {
-    deleteFood(detail.food);
+  function handleDeleteFood(food: FoodRecord) {
+    deleteFood(food);
   }
 
-  function handleFilterChange({ detail }: { detail: { filter: FoodFilter } }) {
-    filter = detail.filter;
+  function handleFilterChange(newFilter: FoodFilter) {
+    filter = newFilter;
   }
 
-  function handleFoodDragStart({
-    detail,
-  }: {
-    detail: { event: DragEvent; food: FoodRecord };
-  }) {
-    if (!detail.event.dataTransfer) return;
+  function handleFoodDragStart(event: DragEvent, food: FoodRecord) {
+    if (!event.dataTransfer) return;
 
-    detail.event.dataTransfer.effectAllowed = "copy";
-    detail.event.dataTransfer.setData(
-      "application/json",
-      JSON.stringify(detail.food)
-    );
+    event.dataTransfer.effectAllowed = "copy";
+    event.dataTransfer.setData("application/json", JSON.stringify(food));
 
     // Visual feedback
     setTimeout(() => {
-      const target = detail.event.target as HTMLElement;
+      const target = event.target as HTMLElement;
       target.classList.add("opacity-50");
     }, 0);
   }
 
-  function handleFoodDragEnd({ detail }: { detail: { event: DragEvent } }) {
-    const target = detail.event.target as HTMLElement;
+  function handleFoodDragEnd(event: DragEvent) {
+    const target = event.target as HTMLElement;
     target.classList.remove("opacity-50");
   }
 
@@ -270,7 +262,6 @@
   function handleClearForm() {
     clearForm();
   }
-
   // Event handlers for QuickPicksList component
   function handleCreateQuickPick() {
     createQuickPick();
@@ -280,90 +271,72 @@
     saveQuickPicks();
   }
 
-  function handleUpdateShowHidden({
-    detail,
-  }: {
-    detail: { showHidden: boolean };
-  }) {
-    showHidden = detail.showHidden;
+  function handleUpdateShowHidden(newShowHidden: boolean) {
+    showHidden = newShowHidden;
   }
 
-  function handleQuickPickDelete({ detail }: { detail: { index: number } }) {
-    const quickPick = quickPickList[detail.index];
+  function handleQuickPickDelete(index: number) {
+    const quickPick = quickPickList[index];
     if (quickPick._id) {
       quickPicksToDelete.push(quickPick._id);
     }
-    quickPickList.splice(detail.index, 1);
+    quickPickList.splice(index, 1);
     quickPickList = [...quickPickList]; // Trigger reactivity
   }
 
-  function handleQuickPickMoveUp({ detail }: { detail: { index: number } }) {
-    const quickPick = quickPickList.splice(detail.index, 1)[0];
+  function handleQuickPickMoveUp(index: number) {
+    const quickPick = quickPickList.splice(index, 1)[0];
     quickPickList.unshift(quickPick);
     quickPickList = [...quickPickList]; // Trigger reactivity
   }
 
-  function handleQuickPickUpdateName({
-    detail,
-  }: {
-    detail: { index: number; name: string };
-  }) {
-    quickPickList[detail.index].name = detail.name;
+  function handleQuickPickUpdateName(index: number, name: string) {
+    quickPickList[index].name = name;
   }
 
-  function handleQuickPickUpdateHidden({
-    detail,
-  }: {
-    detail: { index: number; hidden: boolean };
-  }) {
-    const quickPick = quickPickList[detail.index];
-    quickPick.hidden = detail.hidden;
+  function handleQuickPickUpdateHidden(index: number, hidden: boolean) {
+    const quickPick = quickPickList[index];
+    quickPick.hidden = hidden;
 
     // Move to top if unhidden
-    if (!detail.hidden) {
-      quickPickList.splice(detail.index, 1);
+    if (!hidden) {
+      quickPickList.splice(index, 1);
       quickPickList.unshift(quickPick);
       quickPickList = [...quickPickList]; // Trigger reactivity
     }
   }
 
-  function handleQuickPickUpdateHideAfterUse({
-    detail,
-  }: {
-    detail: { index: number; hideAfterUse: boolean };
-  }) {
-    quickPickList[detail.index].hideafteruse = detail.hideAfterUse;
+  function handleQuickPickUpdateHideAfterUse(
+    index: number,
+    hideAfterUse: boolean
+  ) {
+    quickPickList[index].hideafteruse = hideAfterUse;
   }
 
-  function handleQuickPickDeleteFood({
-    detail,
-  }: {
-    detail: { quickPickIndex: number; foodIndex: number };
-  }) {
-    const quickPick = quickPickList[detail.quickPickIndex];
-    quickPick.foods.splice(detail.foodIndex, 1);
+  function handleQuickPickDeleteFood(
+    quickPickIndex: number,
+    foodIndex: number
+  ) {
+    const quickPick = quickPickList[quickPickIndex];
+    quickPick.foods.splice(foodIndex, 1);
     calculateQuickPickCarbs(quickPick);
     quickPickList = [...quickPickList]; // Trigger reactivity
   }
 
-  function handleQuickPickUpdatePortions({
-    detail,
-  }: {
-    detail: { quickPickIndex: number; foodIndex: number; portions: number };
-  }) {
-    const quickPick = quickPickList[detail.quickPickIndex];
-    quickPick.foods[detail.foodIndex].portions = detail.portions;
+  function handleQuickPickUpdatePortions(
+    quickPickIndex: number,
+    foodIndex: number,
+    portions: number
+  ) {
+    const quickPick = quickPickList[quickPickIndex];
+    quickPick.foods[foodIndex].portions = portions;
     calculateQuickPickCarbs(quickPick);
     quickPickList = [...quickPickList]; // Trigger reactivity
   }
 
-  function handleQuickPickDrop({
-    detail,
-  }: {
-    detail: { quickPickIndex: number; food: FoodRecord };
-  }) {
-    const quickPick = quickPickList[detail.quickPickIndex];
-    const quickPickFood: QuickPickFood = { ...detail.food, portions: 1 };
+  function handleQuickPickDrop(quickPickIndex: number, food: FoodRecord) {
+    const quickPick = quickPickList[quickPickIndex];
+    const quickPickFood: QuickPickFood = { ...food, portions: 1 };
     quickPick.foods.push(quickPickFood);
     calculateQuickPickCarbs(quickPick);
     quickPickList = [...quickPickList]; // Trigger reactivity
@@ -390,16 +363,16 @@
       {foodList}
       {filter}
       {categories}
-      on:editFood={handleEditFood}
-      on:deleteFood={handleDeleteFood}
-      on:filterChange={handleFilterChange}
-      on:foodDragStart={handleFoodDragStart}
-      on:foodDragEnd={handleFoodDragEnd}
+      onEditFood={handleEditFood}
+      onDeleteFood={handleDeleteFood}
+      onFilterChange={handleFilterChange}
+      onFoodDragStart={handleFoodDragStart}
+      onFoodDragEnd={handleFoodDragEnd}
     />
 
     <!-- Food Record Editor -->
     <FoodEditor
-      bind:currentFood
+      {currentFood}
       {categories}
       onSaveFood={handleSaveFood}
       onClearForm={handleClearForm}
@@ -409,17 +382,17 @@
     <QuickPicksList
       {quickPickList}
       {showHidden}
-      on:createQuickPick={handleCreateQuickPick}
-      on:saveQuickPicks={handleSaveQuickPicks}
-      on:updateShowHidden={handleUpdateShowHidden}
-      on:quickPickDelete={handleQuickPickDelete}
-      on:quickPickMoveUp={handleQuickPickMoveUp}
-      on:quickPickUpdateName={handleQuickPickUpdateName}
-      on:quickPickUpdateHidden={handleQuickPickUpdateHidden}
-      on:quickPickUpdateHideAfterUse={handleQuickPickUpdateHideAfterUse}
-      on:quickPickDeleteFood={handleQuickPickDeleteFood}
-      on:quickPickUpdatePortions={handleQuickPickUpdatePortions}
-      on:quickPickDrop={handleQuickPickDrop}
+      onCreateQuickPick={handleCreateQuickPick}
+      onSaveQuickPicks={handleSaveQuickPicks}
+      onUpdateShowHidden={handleUpdateShowHidden}
+      onQuickPickDelete={handleQuickPickDelete}
+      onQuickPickMoveUp={handleQuickPickMoveUp}
+      onQuickPickUpdateName={handleQuickPickUpdateName}
+      onQuickPickUpdateHidden={handleQuickPickUpdateHidden}
+      onQuickPickUpdateHideAfterUse={handleQuickPickUpdateHideAfterUse}
+      onQuickPickDeleteFood={handleQuickPickDeleteFood}
+      onQuickPickUpdatePortions={handleQuickPickUpdatePortions}
+      onQuickPickDrop={handleQuickPickDrop}
     />
   {/if}
 </div>

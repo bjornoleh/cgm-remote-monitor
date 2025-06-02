@@ -8,14 +8,11 @@
   } from "$lib/components/ui/card";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
-  import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-  } from "$lib/components/ui/select";
-  import { Plus, Trash2, Copy } from "lucide-svelte";
+  import * as Command from "$lib/components/ui/command";
+  import * as Popover from "$lib/components/ui/popover";
+  import { Plus, Trash2, Copy, Check, ChevronsUpDown } from "lucide-svelte";
+  import { tick } from "svelte";
+  import { cn } from "$lib/utils";
 
   interface Props {
     currentProfile: string;
@@ -28,7 +25,6 @@
     onRemoveProfile: () => void;
     onCloneProfile: () => void;
   }
-
   let {
     currentProfile = $bindable(),
     mongoRecords,
@@ -40,6 +36,28 @@
     onRemoveProfile,
     onCloneProfile,
   }: Props = $props();
+
+  // Combobox state
+  let profileOpen = $state(false);
+  let profileTriggerRef = $state<HTMLButtonElement>(null!);
+  // Get available profiles
+  let availableProfiles = $derived(
+    Object.keys(mongoRecords[currentRecord]?.store || {}).filter(
+      (key): key is string => typeof key === "string"
+    )
+  );
+  let selectedProfileLabel = $derived(currentProfile || "Select a profile...");
+
+  function closeProfileAndFocus() {
+    profileOpen = false;
+    tick().then(() => profileTriggerRef.focus());
+  }
+
+  function selectProfile(profileName: string) {
+    currentProfile = profileName;
+    onProfileChange();
+    closeProfileAndFocus();
+  }
 </script>
 
 <Card>
@@ -69,22 +87,48 @@
         <Label>Profile Name:</Label>
         <Input type="text" bind:value={profileNameInput} oninput={onUpdate} />
       </div>
-
       <div class="space-y-2">
         <Label>Current Profile:</Label>
-        <Select
-          onValueChange={(value) => {
-            currentProfile = value;
-            onProfileChange();
-          }}
-        >
-          <SelectTrigger>Select a profile</SelectTrigger>
-          <SelectContent>
-            {#each Object.keys(mongoRecords[currentRecord]?.store || {}) as profileName}
-              <SelectItem value={profileName}>{profileName}</SelectItem>
-            {/each}
-          </SelectContent>
-        </Select>
+        <Popover.Root bind:open={profileOpen}>
+          <Popover.Trigger bind:ref={profileTriggerRef}>
+            {#snippet child({ props })}
+              <Button
+                variant="outline"
+                class="w-full justify-between"
+                {...props}
+                role="combobox"
+                aria-expanded={profileOpen}
+              >
+                {selectedProfileLabel}
+                <ChevronsUpDown class="ml-2 size-4 shrink-0 opacity-50" />
+              </Button>
+            {/snippet}
+          </Popover.Trigger>
+          <Popover.Content class="w-[--radix-popover-trigger-width] p-0">
+            <Command.Root>
+              <Command.Input placeholder="Search profiles..." />
+              <Command.List>
+                <Command.Empty>No profile found.</Command.Empty>
+                <Command.Group>
+                  {#each availableProfiles as profileName}
+                    <Command.Item
+                      value={profileName}
+                      onSelect={() => selectProfile(profileName)}
+                    >
+                      <Check
+                        class={cn(
+                          "mr-2 size-4",
+                          currentProfile !== profileName && "text-transparent"
+                        )}
+                      />
+                      {profileName}
+                    </Command.Item>
+                  {/each}
+                </Command.Group>
+              </Command.List>
+            </Command.Root>
+          </Popover.Content>
+        </Popover.Root>
       </div>
     </div>
   </CardContent>

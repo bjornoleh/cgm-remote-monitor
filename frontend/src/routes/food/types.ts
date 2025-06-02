@@ -29,9 +29,9 @@ export interface QuickPickRecord {
 }
 
 export interface FoodFilter {
-	category: string;
-	subcategory: string;
-	name: string;
+	category?: string;
+	subcategory?: string;
+	name?: string;
 }
 
 export interface Categories {

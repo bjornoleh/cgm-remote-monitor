@@ -7,7 +7,6 @@
     CardTitle,
   } from "$lib/components/ui/card";
   import { Edit, Trash2 } from "lucide-svelte";
-  import { createEventDispatcher } from "svelte";
   import FoodFilters from "./FoodFilters.svelte";
   import type { FoodRecord, FoodFilter } from "./types";
 
@@ -15,17 +14,23 @@
     foodList: FoodRecord[];
     filter: FoodFilter;
     categories: Record<string, Record<string, boolean>>;
+    onEditFood: (food: FoodRecord) => void;
+    onDeleteFood: (food: FoodRecord) => void;
+    onFilterChange: (filter: FoodFilter) => void;
+    onFoodDragStart: (event: DragEvent, food: FoodRecord) => void;
+    onFoodDragEnd: (event: DragEvent) => void;
   }
 
-  let { foodList, filter, categories }: Props = $props();
-
-  const dispatch = createEventDispatcher<{
-    editFood: { food: FoodRecord };
-    deleteFood: { food: FoodRecord };
-    filterChange: { filter: FoodFilter };
-    foodDragStart: { event: DragEvent; food: FoodRecord };
-    foodDragEnd: { event: DragEvent };
-  }>();
+  let {
+    foodList,
+    filter,
+    categories,
+    onEditFood,
+    onDeleteFood,
+    onFilterChange,
+    onFoodDragStart,
+    onFoodDragEnd,
+  }: Props = $props();
 
   // Derived state for filtered food list
   let filteredFoodList = $derived(
@@ -41,24 +46,20 @@
       return true;
     })
   );
-
   function handleEditFood(food: FoodRecord) {
-    dispatch("editFood", { food });
+    onEditFood(food);
   }
 
   function handleDeleteFood(food: FoodRecord) {
-    dispatch("deleteFood", { food });
-  }
-  function handleFilterChange({ detail }: { detail: { filter: FoodFilter } }) {
-    dispatch("filterChange", { filter: detail.filter });
+    onDeleteFood(food);
   }
 
   function handleFoodDragStart(event: DragEvent, food: FoodRecord) {
-    dispatch("foodDragStart", { event, food });
+    onFoodDragStart(event, food);
   }
 
   function handleFoodDragEnd(event: DragEvent) {
-    dispatch("foodDragEnd", { event });
+    onFoodDragEnd(event);
   }
 </script>
 
@@ -68,7 +69,7 @@
   </CardHeader>
   <CardContent class="space-y-4">
     <!-- Filters -->
-    <FoodFilters {filter} {categories} on:filterChange={handleFilterChange} />
+    <FoodFilters {filter} {categories} {onFilterChange} />
 
     <!-- Food List -->
     <div class="border rounded-lg max-h-64 overflow-auto">
@@ -84,7 +85,7 @@
         <div>Category</div>
         <div>Subcategory</div>
       </div>
-      {#each filteredFoodList as food, index}
+      {#each filteredFoodList as food}
         <div
           class="grid grid-cols-8 gap-2 p-2 border-b hover:bg-muted/50 text-sm draggable-food cursor-grab"
           role="button"
