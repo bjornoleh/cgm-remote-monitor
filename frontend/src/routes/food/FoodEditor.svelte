@@ -13,15 +13,9 @@
   import { Check, ChevronsUpDown, Plus, SquarePlus } from "lucide-svelte";
   import { tick } from "svelte";
   import { cn } from "$lib/utils";
-  import type { FoodRecord } from "./types";
+  import { getFoodState } from "./food-context";
 
-  interface Props {
-    currentFood: FoodRecord;
-    categories: Record<string, Record<string, boolean>>;
-    onSaveFood: () => void;
-    onClearForm: () => void;
-  }
-  let { currentFood, categories, onSaveFood, onClearForm }: Props = $props(); // Combobox state
+  const foodStore = getFoodState(); // Combobox state
   let unitOpen = $state(false);
   let giOpen = $state(false);
   let categorySubcategoryOpen = $state(false);
@@ -29,32 +23,35 @@
   let unitTriggerRef = $state<HTMLButtonElement>(null!);
   let giTriggerRef = $state<HTMLButtonElement>(null!);
   let categorySubcategoryTriggerRef = $state<HTMLButtonElement>(null!);
-  let categorySelectionTriggerRef = $state<HTMLButtonElement>(null!); // Search values for create new option (managed by Command component)
+  let categorySelectionTriggerRef = $state<HTMLButtonElement>(null!);
+
+  // Search values for create new option (managed by Command component)
   let categorySubcategorySearchValue = $state("");
 
   // Category selection popup state
   let pendingSubcategoryName = $state("");
 
   // Get all categories as array for combobox
-  let allCategories = $derived(Object.keys(categories));
+  let allCategories = $derived(Object.keys(foodStore.categories));
 
   const foodUnits = ["g", "ml", "pcs", "oz"];
   const giOptions = [
     { value: 1, label: "Low" },
     { value: 2, label: "Medium" },
     { value: 3, label: "High" },
-  ];
-  // Selected labels for display
-  let selectedUnitLabel = $derived(currentFood.unit || "Select unit...");
+  ]; // Selected labels for display
+  let selectedUnitLabel = $derived(
+    foodStore.currentFood.unit || "Select unit..."
+  );
   let selectedGiLabel = $derived(
-    giOptions.find((opt) => opt.value === currentFood.gi)?.label ||
+    giOptions.find((opt) => opt.value === foodStore.currentFood.gi)?.label ||
       "Select GI..."
   );
   let selectedCategorySubcategoryLabel = $derived.by(() => {
-    if (currentFood.category && currentFood.subcategory) {
-      return `${currentFood.category} > ${currentFood.subcategory}`;
-    } else if (currentFood.category) {
-      return currentFood.category;
+    if (foodStore.currentFood.category && foodStore.currentFood.subcategory) {
+      return `${foodStore.currentFood.category} > ${foodStore.currentFood.subcategory}`;
+    } else if (foodStore.currentFood.category) {
+      return foodStore.currentFood.category;
     } else {
       return "Select category/subcategory...";
     }
@@ -75,26 +72,26 @@
     categorySubcategoryOpen = false;
     tick().then(() => categorySubcategoryTriggerRef.focus());
   }
-
   function selectUnit(unit: string) {
-    currentFood.unit = unit;
+    foodStore.currentFood.unit = unit;
     closeUnitAndFocus();
   }
 
   function selectGi(gi: number) {
-    currentFood.gi = gi;
+    foodStore.currentFood.gi = gi;
     closeGiAndFocus();
   }
+
   function selectCategory(category: string) {
-    currentFood.category = category;
-    currentFood.subcategory = ""; // Reset subcategory when category changes
+    foodStore.currentFood.category = category;
+    foodStore.currentFood.subcategory = ""; // Reset subcategory when category changes
     categorySubcategorySearchValue = ""; // Clear search value
     closeCategorySubcategoryAndFocus();
   }
 
   function selectSubcategory(category: string, subcategory: string) {
-    currentFood.category = category;
-    currentFood.subcategory = subcategory;
+    foodStore.currentFood.category = category;
+    foodStore.currentFood.subcategory = subcategory;
     categorySubcategorySearchValue = ""; // Clear search value
     closeCategorySubcategoryAndFocus();
   }
@@ -115,12 +112,11 @@
       .replace(" Category", "")
       .replace(" > ", " ")
       .trim();
-
     if (categoryName && !allCategories.includes(categoryName)) {
       // Add to categories object
-      categories[categoryName] = {};
-      currentFood.category = categoryName;
-      currentFood.subcategory = "";
+      foodStore.categories[categoryName] = {};
+      foodStore.currentFood.category = categoryName;
+      foodStore.currentFood.subcategory = "";
       categorySubcategoryOpen = false;
     }
   };
@@ -131,17 +127,16 @@
     categorySelectionOpen = true;
     categorySubcategoryOpen = false;
   };
-
   const handleCategorySelectionForSubcategory = (categoryName: string) => {
     if (pendingSubcategoryName && categoryName) {
       // Add new subcategory to the selected category
-      if (!categories[categoryName]) {
-        categories[categoryName] = {};
+      if (!foodStore.categories[categoryName]) {
+        foodStore.categories[categoryName] = {};
       }
-      if (!categories[categoryName][pendingSubcategoryName]) {
-        categories[categoryName][pendingSubcategoryName] = true;
-        currentFood.category = categoryName;
-        currentFood.subcategory = pendingSubcategoryName;
+      if (!foodStore.categories[categoryName][pendingSubcategoryName]) {
+        foodStore.categories[categoryName][pendingSubcategoryName] = true;
+        foodStore.currentFood.category = categoryName;
+        foodStore.currentFood.subcategory = pendingSubcategoryName;
       }
     }
 
@@ -150,32 +145,47 @@
     pendingSubcategoryName = "";
   };
 
+  const handleCreateNewCategoryForSubcategory = () => {
+    if (pendingSubcategoryName) {
+      // Create new category using the pending subcategory name
+      const newCategoryName = pendingSubcategoryName;
+      foodStore.categories[newCategoryName] = {};
+      foodStore.currentFood.category = newCategoryName;
+      foodStore.currentFood.subcategory = "";
+    }
+
+    // Reset state
+    categorySelectionOpen = false;
+    pendingSubcategoryName = "";
+  };
   function handleSaveFood() {
-    onSaveFood();
+    foodStore.saveFood();
   }
+
   function handleClearForm() {
-    onClearForm();
+    foodStore.clearForm();
   }
 </script>
 
 <Card>
   <CardHeader>
     <CardTitle>
-      Record {#if currentFood._id}(ID: {currentFood._id}){/if}
+      Record {#if foodStore.currentFood._id}(ID: {foodStore.currentFood
+          ._id}){/if}
     </CardTitle>
   </CardHeader>
   <CardContent class="space-y-4">
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
       <div class="space-y-2">
         <Label for="food-name">Name</Label>
-        <Input id="food-name" bind:value={currentFood.name} />
+        <Input id="food-name" bind:value={foodStore.currentFood.name} />
       </div>
       <div class="space-y-2">
         <Label for="food-portion">Portion</Label>
         <Input
           id="food-portion"
           type="number"
-          bind:value={currentFood.portion}
+          bind:value={foodStore.currentFood.portion}
         />
       </div>
       <div class="space-y-2">
@@ -209,7 +219,8 @@
                       <Check
                         class={cn(
                           "mr-2 size-4",
-                          currentFood.unit !== unit && "text-transparent"
+                          foodStore.currentFood.unit !== unit &&
+                            "text-transparent"
                         )}
                       />
                       {unit}
@@ -223,7 +234,11 @@
       </div>
       <div class="space-y-2">
         <Label for="food-carbs">Carbs (g)</Label>
-        <Input id="food-carbs" type="number" bind:value={currentFood.carbs} />
+        <Input
+          id="food-carbs"
+          type="number"
+          bind:value={foodStore.currentFood.carbs}
+        />
       </div>
       <div class="space-y-2">
         <Label for="food-gi">GI</Label>
@@ -256,7 +271,8 @@
                       <Check
                         class={cn(
                           "mr-2 size-4",
-                          currentFood.gi !== option.value && "text-transparent"
+                          foodStore.currentFood.gi !== option.value &&
+                            "text-transparent"
                         )}
                       />
                       {option.label}
@@ -308,8 +324,8 @@
                     <Check
                       class={cn(
                         "mr-2 size-4",
-                        (currentFood.category !== "" ||
-                          currentFood.subcategory !== "") &&
+                        (foodStore.currentFood.category !== "" ||
+                          foodStore.currentFood.subcategory !== "") &&
                           "text-transparent"
                       )}
                     />
@@ -329,17 +345,16 @@
                       <Check
                         class={cn(
                           "mr-2 size-4",
-                          (currentFood.category !== category ||
-                            currentFood.subcategory !== "") &&
+                          (foodStore.currentFood.category !== category ||
+                            foodStore.currentFood.subcategory !== "") &&
                             "text-transparent"
                         )}
                       />
                       <strong>{category}</strong>
                     </Command.Item>
-
                     <!-- Subcategories for this category -->
-                    {#if categories[category]}
-                      {#each Object.keys(categories[category]).filter((sub) => !categorySubcategorySearchValue || sub
+                    {#if foodStore.categories[category]}
+                      {#each Object.keys(foodStore.categories[category]).filter((sub) => !categorySubcategorySearchValue || sub
                             .toLowerCase()
                             .includes(categorySubcategorySearchValue.toLowerCase())) as subcategory}
                         <Command.Item
@@ -353,8 +368,9 @@
                           <Check
                             class={cn(
                               "mr-2 size-4",
-                              (currentFood.category !== category ||
-                                currentFood.subcategory !== subcategory) &&
+                              (foodStore.currentFood.category !== category ||
+                                foodStore.currentFood.subcategory !==
+                                  subcategory) &&
                                 "text-transparent"
                             )}
                           />
@@ -377,8 +393,8 @@
                   )}
                   {@const hasMatchingSubcategory = allCategories.some(
                     (cat) =>
-                      categories[cat] &&
-                      Object.keys(categories[cat]).some((sub) =>
+                      foodStore.categories[cat] &&
+                      Object.keys(foodStore.categories[cat]).some((sub) =>
                         sub.toLowerCase().includes(searchTerm.toLowerCase())
                       )
                   )}
@@ -428,10 +444,7 @@
                 <Command.Group>
                   <Command.Item
                     value="Create new category"
-                    onSelect={() =>
-                      handleCategorySelectionForSubcategory(
-                        pendingSubcategoryName
-                      )}
+                    onSelect={handleCreateNewCategoryForSubcategory}
                   >
                     <Plus class="mr-2 size-4" />
                     Create "{pendingSubcategoryName}" as new category
@@ -457,25 +470,32 @@
       </div>
       <div class="space-y-2">
         <Label for="food-fat">Fat (g)</Label>
-        <Input id="food-fat" type="number" bind:value={currentFood.fat} />
+        <Input
+          id="food-fat"
+          type="number"
+          bind:value={foodStore.currentFood.fat}
+        />
       </div>
       <div class="space-y-2">
         <Label for="food-protein">Protein (g)</Label>
         <Input
           id="food-protein"
           type="number"
-          bind:value={currentFood.protein}
+          bind:value={foodStore.currentFood.protein}
         />
       </div>
       <div class="space-y-2">
         <Label for="food-energy">Energy (kJ)</Label>
-        <Input id="food-energy" type="number" bind:value={currentFood.energy} />
+        <Input
+          id="food-energy"
+          type="number"
+          bind:value={foodStore.currentFood.energy}
+        />
       </div>
     </div>
-
     <div class="flex gap-2">
       <Button onclick={handleSaveFood}>
-        {currentFood._id ? "Save record" : "Create new record"}
+        {foodStore.currentFood._id ? "Save record" : "Create new record"}
       </Button>
       <Button variant="outline" onclick={handleClearForm}>Clear</Button>
     </div>

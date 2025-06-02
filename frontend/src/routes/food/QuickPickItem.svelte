@@ -7,39 +7,18 @@
   import { Separator } from "$lib/components/ui/separator";
   import { Trash2, MoveUp } from "lucide-svelte";
   import type { QuickPickRecord, FoodRecord } from "./types";
+  import { getFoodState } from "./food-context";
 
   interface Props {
     quickPick: QuickPickRecord;
     index: number;
-    onDelete: (index: number) => void;
-    onMoveUp: (index: number) => void;
-    onUpdateName: (index: number, name: string) => void;
-    onUpdateHidden: (index: number, hidden: boolean) => void;
-    onUpdateHideAfterUse: (index: number, hideAfterUse: boolean) => void;
-    onDeleteFood: (quickPickIndex: number, foodIndex: number) => void;
-    onUpdatePortions: (
-      quickPickIndex: number,
-      foodIndex: number,
-      portions: number
-    ) => void;
-    onDrop: (quickPickIndex: number, food: FoodRecord) => void;
   }
 
-  let {
-    quickPick,
-    index,
-    onDelete,
-    onMoveUp,
-    onUpdateName,
-    onUpdateHidden,
-    onUpdateHideAfterUse,
-    onDeleteFood,
-    onUpdatePortions,
-    onDrop,
-  }: Props = $props();
+  let { quickPick, index }: Props = $props();
+
+  const foodState = getFoodState();
 
   let isDragOver = $state(false);
-
   function handleDrop(event: DragEvent) {
     event.preventDefault();
     isDragOver = false;
@@ -48,7 +27,7 @@
       const foodData = event.dataTransfer?.getData("application/json");
       if (!foodData) return;
       const food: FoodRecord = JSON.parse(foodData);
-      onDrop(index, food);
+      foodState.addFoodToQuickPick(index, food);
     } catch (error) {
       console.error("Error handling drop:", error);
     }
@@ -72,35 +51,16 @@
       isDragOver = false;
     }
   }
-  function deleteQuickPick() {
-    onDelete(index);
-  }
-
-  function moveToTop() {
-    onMoveUp(index);
-  }
 
   function updateName(event: Event) {
     const target = event.target as HTMLInputElement;
-    onUpdateName(index, target.value);
-  }
-
-  function updateHidden(checked: boolean) {
-    onUpdateHidden(index, checked);
-  }
-
-  function updateHideAfterUse(checked: boolean) {
-    onUpdateHideAfterUse(index, checked);
-  }
-
-  function deleteFood(foodIndex: number) {
-    onDeleteFood(index, foodIndex);
+    foodState.updateQuickPickName(index, target.value);
   }
 
   function updatePortions(foodIndex: number, event: Event) {
     const target = event.target as HTMLInputElement;
     const portions = parseFloat(target.value) || 0;
-    onUpdatePortions(index, foodIndex, portions);
+    foodState.updateQuickPickPortions(index, foodIndex, portions);
   }
 </script>
 
@@ -117,7 +77,7 @@
       <Button
         variant="ghost"
         size="sm"
-        onclick={moveToTop}
+        onclick={() => foodState.moveQuickPickToTop(index)}
         title="Move to the top"
       >
         <MoveUp class="h-4 w-4" />
@@ -126,7 +86,7 @@
       <Button
         variant="ghost"
         size="sm"
-        onclick={deleteQuickPick}
+        onclick={() => foodState.deleteQuickPick(index)}
         title="Delete quick pick"
       >
         <Trash2 class="h-4 w-4" />
@@ -146,7 +106,8 @@
         <Checkbox
           id="hidden-{index}"
           checked={quickPick.hidden}
-          onCheckedChange={updateHidden}
+          onCheckedChange={(checked) =>
+            foodState.updateQuickPickHidden(index, checked)}
         />
         <Label for="hidden-{index}">Hidden</Label>
       </div>
@@ -154,7 +115,8 @@
         <Checkbox
           id="hideafteruse-{index}"
           checked={quickPick.hideafteruse}
-          onCheckedChange={updateHideAfterUse}
+          onCheckedChange={(checked) =>
+            foodState.updateQuickPickHideAfterUse(index, checked)}
         />
         <Label for="hideafteruse-{index}">Hide after use</Label>
       </div>
@@ -185,7 +147,7 @@
               <Button
                 variant="ghost"
                 size="sm"
-                onclick={() => deleteFood(foodIndex)}
+                onclick={() => foodState.deleteQuickPickFood(index, foodIndex)}
                 title="Remove food from quick pick"
               >
                 <Trash2 class="h-3 w-3" />

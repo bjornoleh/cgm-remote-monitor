@@ -6,61 +6,27 @@
     CardHeader,
     CardTitle,
   } from "$lib/components/ui/card";
+  import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+  } from "$lib/components/ui/table";
   import { Edit, Trash2 } from "lucide-svelte";
+  import { getFoodState } from "./food-context.js";
   import FoodFilters from "./FoodFilters.svelte";
-  import type { FoodRecord, FoodFilter } from "./types";
+  import type { FoodRecord } from "./types";
 
   interface Props {
-    foodList: FoodRecord[];
-    filter: FoodFilter;
-    categories: Record<string, Record<string, boolean>>;
-    onEditFood: (food: FoodRecord) => void;
-    onDeleteFood: (food: FoodRecord) => void;
-    onFilterChange: (filter: FoodFilter) => void;
-    onFoodDragStart: (event: DragEvent, food: FoodRecord) => void;
-    onFoodDragEnd: (event: DragEvent) => void;
+    handleFoodDragStart: (event: DragEvent, food: FoodRecord) => void;
+    handleFoodDragEnd: (event: DragEvent) => void;
   }
 
-  let {
-    foodList,
-    filter,
-    categories,
-    onEditFood,
-    onDeleteFood,
-    onFilterChange,
-    onFoodDragStart,
-    onFoodDragEnd,
-  }: Props = $props();
+  let { handleFoodDragStart, handleFoodDragEnd }: Props = $props();
 
-  // Derived state for filtered food list
-  let filteredFoodList = $derived(
-    foodList.filter((food) => {
-      if (filter.category && food.category !== filter.category) return false;
-      if (filter.subcategory && food.subcategory !== filter.subcategory)
-        return false;
-      if (
-        filter.name &&
-        !food.name.toLowerCase().includes(filter.name.toLowerCase())
-      )
-        return false;
-      return true;
-    })
-  );
-  function handleEditFood(food: FoodRecord) {
-    onEditFood(food);
-  }
-
-  function handleDeleteFood(food: FoodRecord) {
-    onDeleteFood(food);
-  }
-
-  function handleFoodDragStart(event: DragEvent, food: FoodRecord) {
-    onFoodDragStart(event, food);
-  }
-
-  function handleFoodDragEnd(event: DragEvent) {
-    onFoodDragEnd(event);
-  }
+  const foodStore = getFoodState();
 </script>
 
 <Card>
@@ -69,56 +35,61 @@
   </CardHeader>
   <CardContent class="space-y-4">
     <!-- Filters -->
-    <FoodFilters {filter} {categories} {onFilterChange} />
-
+    <FoodFilters />
     <!-- Food List -->
     <div class="border rounded-lg max-h-64 overflow-auto">
-      <div
-        class="grid grid-cols-8 gap-2 p-2 border-b bg-muted/50 text-sm font-medium"
-      >
-        <div>Actions</div>
-        <div>Name</div>
-        <div class="text-center">Portion</div>
-        <div class="text-center">Unit</div>
-        <div class="text-center">Carbs</div>
-        <div class="text-center">GI</div>
-        <div>Category</div>
-        <div>Subcategory</div>
-      </div>
-      {#each filteredFoodList as food}
-        <div
-          class="grid grid-cols-8 gap-2 p-2 border-b hover:bg-muted/50 text-sm draggable-food cursor-grab"
-          role="button"
-          tabindex="0"
-          draggable="true"
-          ondragstart={(e) => handleFoodDragStart(e, food)}
-          ondragend={handleFoodDragEnd}
-        >
-          <div class="flex gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onclick={() => handleEditFood(food)}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Actions</TableHead>
+            <TableHead>Name</TableHead>
+            <TableHead class="text-center">Portion</TableHead>
+            <TableHead class="text-center">Unit</TableHead>
+            <TableHead class="text-center">Carbs</TableHead>
+            <TableHead class="text-center">GI</TableHead>
+            <TableHead>Category</TableHead>
+            <TableHead>Subcategory</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {#each foodStore.filteredFoodList as food}
+            <TableRow
+              class="draggable-food cursor-grab"
+              role="button"
+              tabindex={0}
+              draggable="true"
+              ondragstart={(e) => handleFoodDragStart(e, food)}
+              ondragend={handleFoodDragEnd}
             >
-              <Edit class="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onclick={() => handleDeleteFood(food)}
-            >
-              <Trash2 class="h-3 w-3" />
-            </Button>
-          </div>
-          <div class="truncate">{food.name}</div>
-          <div class="text-center">{food.portion}</div>
-          <div class="text-center">{food.unit}</div>
-          <div class="text-center">{food.carbs}</div>
-          <div class="text-center">{food.gi}</div>
-          <div class="truncate">{food.category}</div>
-          <div class="truncate">{food.subcategory}</div>
-        </div>
-      {/each}
+              <TableCell>
+                <div class="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onclick={() => foodStore.editFood(food)}
+                  >
+                    <Edit class="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onclick={() => foodStore.deleteFood(food)}
+                  >
+                    <Trash2 class="h-3 w-3" />
+                  </Button>
+                </div>
+              </TableCell>
+              <TableCell class="truncate">{food.name}</TableCell>
+              <TableCell class="text-center">{food.portion}</TableCell>
+              <TableCell class="text-center">{food.unit}</TableCell>
+              <TableCell class="text-center">{food.carbs}</TableCell>
+              <TableCell class="text-center">{food.gi}</TableCell>
+              <TableCell class="truncate">{food.category}</TableCell>
+              <TableCell class="truncate">{food.subcategory}</TableCell>
+            </TableRow>
+          {/each}
+        </TableBody>
+      </Table>
     </div>
   </CardContent>
 </Card>
