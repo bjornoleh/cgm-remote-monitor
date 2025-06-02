@@ -116,28 +116,28 @@ export default defineConfig({
       },
 
       // Handle clock face redirects - proxy clock routes that need backend data
-      '^/clock/(?!.*\\.(html|js|css|png|jpg|gif|svg)$).*': {
-        target: 'http://localhost:1337',
-        changeOrigin: true,
-        secure: false,
-        configure: (proxy, options) => {
-          proxy.on('proxyReq', (proxyReq, req, res) => {
-            // Handle clock face redirects similar to Caddy
-            if (req.url) {
-              const clockMatch = req.url.match(/^\/clock\/([^?]+)$/);
-              if (clockMatch && !req.url.includes('?')) {
-                const face = clockMatch[1];
-                // Redirect to clock root with face parameter
-                res.writeHead(302, {
-                  'Location': `/clock/?face=${face}`
-                });
-                res.end();
-                return;
-              }
-            }
-          });
-        }
-      },
+      // '^/clock/(?!.*\\.(html|js|css|png|jpg|gif|svg)$).*': {
+      //   target: 'http://localhost:1337',
+      //   changeOrigin: true,
+      //   secure: false,
+      //   configure: (proxy, options) => {
+      //     proxy.on('proxyReq', (proxyReq, req, res) => {
+      //       // Handle clock face redirects similar to Caddy
+      //       if (req.url) {
+      //         const clockMatch = req.url.match(/^\/clock\/([^?]+)$/);
+      //         if (clockMatch && !req.url.includes('?')) {
+      //           const face = clockMatch[1];
+      //           // Redirect to clock root with face parameter
+      //           res.writeHead(302, {
+      //             'Location': `/clock/?face=${face}`
+      //           });
+      //           res.end();
+      //           return;
+      //         }
+      //       }
+      //     });
+      //   }
+      // },
 
       // Profile, admin, report redirects - ensure trailing slash
       '/profile$': {
