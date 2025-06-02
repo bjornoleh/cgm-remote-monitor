@@ -106,7 +106,7 @@
             </Button>
           {/snippet}
         </Popover.Trigger>
-        <Popover.Content class="w-[--radix-popover-trigger-width] p-0">
+        <Popover.Content class="w-[var(--bits-popover-anchor-width)] p-0">
           <Command.Root>
             <Command.Input placeholder="Search categories..." />
             <Command.List>
@@ -161,7 +161,7 @@
             </Button>
           {/snippet}
         </Popover.Trigger>
-        <Popover.Content class="w-[--radix-popover-trigger-width] p-0">
+        <Popover.Content class="w-[var(--bits-popover-anchor-width)] p-0">
           <Command.Root>
             <Command.Input placeholder="Search subcategories..." />
             <Command.List>

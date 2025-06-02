@@ -104,7 +104,7 @@
               </Button>
             {/snippet}
           </Popover.Trigger>
-          <Popover.Content class="w-[--radix-popover-trigger-width] p-0">
+          <Popover.Content class="w-[var(--bits-popover-anchor-width)] p-0">
             <Command.Root>
               <Command.Input placeholder="Search profiles..." />
               <Command.List>

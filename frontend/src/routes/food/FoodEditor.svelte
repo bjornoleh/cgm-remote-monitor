@@ -195,7 +195,7 @@
               </Button>
             {/snippet}
           </Popover.Trigger>
-          <Popover.Content class="w-[--radix-popover-trigger-width] p-0">
+          <Popover.Content class="w-[var(--bits-popover-anchor-width)] p-0">
             <Command.Root>
               <Command.Input placeholder="Search units..." />
               <Command.List>
@@ -242,7 +242,7 @@
               </Button>
             {/snippet}
           </Popover.Trigger>
-          <Popover.Content class="w-[--radix-popover-trigger-width] p-0">
+          <Popover.Content class="w-[var(--bits-popover-anchor-width)] p-0">
             <Command.Root>
               <Command.Input placeholder="Search GI levels..." />
               <Command.List>
@@ -273,7 +273,10 @@
       <div class="space-y-2 col-span-2">
         <Label for="food-category-subcategory">Category & Subcategory</Label>
         <Popover.Root bind:open={categorySubcategoryOpen}>
-          <Popover.Trigger bind:ref={categorySubcategoryTriggerRef}>
+          <Popover.Trigger
+            class="w-64"
+            bind:ref={categorySubcategoryTriggerRef}
+          >
             {#snippet child({ props })}
               <Button
                 variant="outline"
@@ -287,13 +290,11 @@
               </Button>
             {/snippet}
           </Popover.Trigger>
-          <Popover.Content class="w-[--radix-popover-trigger-width] p-0">
+          <Popover.Content class="w-[var(--bits-popover-anchor-width)] p-0">
             <Command.Root shouldFilter={false}>
               <Command.Input
                 placeholder="Search categories and subcategories..."
-                oninput={(e) => {
-                  categorySubcategorySearchValue = e.currentTarget.value;
-                }}
+                bind:value={categorySubcategorySearchValue}
               />
               <Command.List>
                 <Command.Empty>No category found.</Command.Empty>
@@ -423,6 +424,7 @@
               <Command.Input placeholder="Search categories..." />
               <Command.List>
                 <Command.Empty>No category found.</Command.Empty>
+                <Command.Separator />
                 <Command.Group>
                   <Command.Item
                     value="Create new category"
