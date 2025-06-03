@@ -4,13 +4,13 @@
   import { fromTreatments } from "$lib/calculations/iob.ts";
   import type { Treatment } from "$lib";
   import type { IOBProfile } from "$lib/calculations/types.ts";
-  
+
   interface Props {
     treatments: Treatment[];
     intervalMinutes?: number; // Time interval in minutes (defaults to 15)
     profile?: IOBProfile; // Optional IOB profile for more accurate calculations
   }
-  let { treatments, intervalMinutes = 15, profile }: Props = $props();
+  let { treatments, intervalMinutes = 5, profile }: Props = $props();
 
   // Transform treatments data to calculate actual IOB at each time interval
   let chartData = $derived.by(() => {
@@ -31,23 +31,33 @@
         bolusIOB: 0,
         basalIOB: 0,
       };
-    });    // Calculate IOB for each time interval
+    }); // Calculate IOB for each time interval
     intervalData.forEach((interval) => {
       // Create a timestamp for this interval (using today's date as baseline)
       const now = new Date();
-      const intervalTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 
-                                   interval.hour, interval.minute).getTime();
+      const intervalTime = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        interval.hour,
+        interval.minute
+      ).getTime();
 
       // Filter treatments that would affect IOB at this time
       // Only include treatments that occurred before this time interval
-      const relevantTreatments = treatments.filter(treatment => {
-        const treatmentTime = treatment.mills || new Date(treatment.created_at).getTime();
+      const relevantTreatments = treatments.filter((treatment) => {
+        const treatmentTime =
+          treatment.mills || new Date(treatment.created_at).getTime();
         return treatmentTime <= intervalTime;
       });
 
       // Calculate IOB from treatments at this specific time
-      const iobResult = fromTreatments(relevantTreatments as any, profile, intervalTime);
-      
+      const iobResult = fromTreatments(
+        relevantTreatments,
+        profile,
+        intervalTime
+      );
+
       // Separate bolus IOB (from treatments) and basal IOB
       interval.bolusIOB = iobResult.iob || 0;
       interval.basalIOB = iobResult.basalIob || 0;
@@ -71,7 +81,7 @@
           label: "Bolus IOB (U)",
         },
         {
-          key: "basalIOB", 
+          key: "basalIOB",
           color: "var(--iob-basal)",
           label: "Basal IOB (U)",
         },
@@ -112,7 +122,8 @@
         yAxis: {
           format: "metric",
           label: "Insulin on Board (U)",
-        },        tooltip: {
+        },
+        tooltip: {
           header: {
             format: (d) => {
               const index = Math.floor(d);

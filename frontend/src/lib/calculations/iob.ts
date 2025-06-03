@@ -1,4 +1,4 @@
-import type { Treatment, DeviceStatus } from '$lib/stores/client-state.svelte.ts';
+import type { Treatment, DeviceStatus } from '$lib';
 import type { IOBResult, IOBContribution, IOBProfile, LoopIOBData, OpenAPSIOBData, PumpIOBData } from './types.js';
 
 // Type guards for IOB data
@@ -58,11 +58,17 @@ export function calculateInsulinOnBoard(
   const treatmentResult = (treatments && treatments.length)
     ? fromTreatments(treatments, profile, time, spec_profile)
     : {};
-
   if (isEmpty(result)) {
     result = treatmentResult;
-  } else if (treatmentResult.iob) {
-    result.treatmentIob = roundToThreeDecimals(treatmentResult.iob);
+  } else {
+    if (treatmentResult.iob) {
+      result.treatmentIob = roundToThreeDecimals(treatmentResult.iob);
+    }
+    if (treatmentResult.basalIob) {
+      // Add treatment basal IOB to device status basal IOB if available
+      result.basalIob = (result.basalIob || 0) + treatmentResult.basalIob;
+      result.basalIob = roundToThreeDecimals(result.basalIob);
+    }
   }
 
   if (result.iob) {
@@ -158,9 +164,7 @@ export function fromDeviceStatus(devicestatusEntry: DeviceStatus): IOBResult {
     let timestamp = openAPSData.timestamp;
     if (openAPSData.time && !timestamp) {
       timestamp = openAPSData.time;
-    }
-
-    return {
+    }    return {
       iob: openAPSData.iob,
       basalIob: openAPSData.basaliob,
       activity: openAPSData.activity,
@@ -195,6 +199,7 @@ export function fromTreatments(
 ): IOBResult {
   let totalIOB = 0;
   let totalActivity = 0;
+  let totalBasalIOB = 0;
   let lastBolus: Treatment | null = null;
 
   const currentTime = time || Date.now();
@@ -203,24 +208,41 @@ export function fromTreatments(
     const treatmentMills = treatment.mills || new Date(treatment.created_at).getTime();
 
     if (treatmentMills <= currentTime) {
-      const tIOB = calcTreatment(treatment, profile, currentTime, spec_profile);
+      // Calculate bolus IOB from treatments with insulin
+      if (treatment.insulin) {
+        const tIOB = calcTreatment(treatment, profile, currentTime, spec_profile);
 
-      if (tIOB.iobContrib > 0) {
-        lastBolus = treatment;
+        if (tIOB.iobContrib > 0) {
+          lastBolus = treatment;
+        }
+
+        if (tIOB?.iobContrib) {
+          totalIOB += tIOB.iobContrib;
+        }
+
+        if (tIOB?.activityContrib) {
+          totalActivity += tIOB.activityContrib;
+        }
       }
 
-      if (tIOB?.iobContrib) {
-        totalIOB += tIOB.iobContrib;
-      }
+      // Calculate basal IOB from temp basal treatments
+      if (treatment.eventType === 'Temp Basal' && treatment.duration) {
+        const basalIOB = calcBasalTreatment(treatment, profile, currentTime, spec_profile);
 
-      if (tIOB?.activityContrib) {
-        totalActivity += tIOB.activityContrib;
+        if (basalIOB?.iobContrib) {
+          totalBasalIOB += basalIOB.iobContrib;
+        }
+
+        if (basalIOB?.activityContrib) {
+          totalActivity += basalIOB.activityContrib;
+        }
       }
     }
   });
 
   return {
     iob: roundToThreeDecimals(totalIOB),
+    basalIob: roundToThreeDecimals(totalBasalIOB),
     activity: totalActivity,
     lastBolus,
     source: 'Care Portal'
@@ -267,6 +289,139 @@ export function calcTreatment(
   }
 
   return result;
+}
+
+/**
+ * Calculate basal IOB contribution from a single temp basal treatment
+ */
+export function calcBasalTreatment(
+  treatment: Treatment,
+  profile?: IOBProfile,
+  time?: number,
+  spec_profile?: unknown
+): IOBContribution {
+  let dia = 3; // Default DIA
+  let sens = 0;
+
+  if (profile) {
+    dia = profile.getDIA?.(time || Date.now(), spec_profile) || 3;
+    sens = profile.getSensitivity?.(time || Date.now(), spec_profile) || 0;
+  }
+
+  const result: IOBContribution = {
+    iobContrib: 0,
+    activityContrib: 0
+  };
+
+  // Only process temp basal treatments
+  if (treatment.eventType !== 'Temp Basal' || !treatment.duration) {
+    return result;
+  }
+
+  const currentTime = time || Date.now();
+  const treatmentTime = treatment.mills || new Date(treatment.created_at).getTime();
+  const treatmentEndTime = treatmentTime + (treatment.duration * 60 * 1000); // duration in minutes
+
+  // Only calculate if treatment is active or recently ended (within DIA period)
+  const diaMillis = dia * 60 * 60 * 1000; // DIA in milliseconds
+  if (currentTime < treatmentTime || currentTime > treatmentEndTime + diaMillis) {
+    return result;
+  }
+  // Calculate the effective insulin rate during the temp basal period
+  let basalRate = 0;
+  if (treatment.absolute !== undefined) {
+    // Absolute temp basal rate in U/h
+    basalRate = treatment.absolute;
+  } else if (treatment.percent !== undefined) {
+    // Percentage temp basal - need profile basal rate to calculate absolute
+    // For now, use a default profile rate of 1.0 U/h if profile not available
+    const profileBasalRate = 1.0; // This should ideally come from profile
+    basalRate = profileBasalRate * (treatment.percent / 100);
+  }
+
+  if (basalRate <= 0) {
+    return result;
+  }
+
+  // Calculate insulin delivered during the active period
+  let deliveredInsulin = 0;
+
+  if (currentTime <= treatmentEndTime) {
+    // Treatment is still active - calculate insulin delivered so far
+    const activeMinutes = (currentTime - treatmentTime) / (60 * 1000);
+    deliveredInsulin = (basalRate * activeMinutes) / 60; // Convert to units
+  } else {
+    // Treatment has ended - calculate total insulin delivered
+    const totalMinutes = treatment.duration;
+    deliveredInsulin = (basalRate * totalMinutes) / 60; // Convert to units
+
+    // Apply IOB decay curve for insulin delivered after treatment ended
+    const timeSinceEnd = currentTime - treatmentEndTime;
+    const minSinceEnd = timeSinceEnd / (60 * 1000);
+
+    // Use simplified exponential decay for basal IOB
+    const decayFactor = Math.exp(-minSinceEnd / (dia * 60 / 2)); // Half-life based decay
+    deliveredInsulin *= decayFactor;
+  }
+
+  // Apply IOB calculation similar to bolus, but adjusted for continuous delivery
+  if (deliveredInsulin > 0) {
+    const scaleFactor = 3.0 / dia;
+    const treatmentAge = (currentTime - treatmentTime) / (60 * 1000); // minutes
+    const minAgo = scaleFactor * treatmentAge;
+    const peak = 75;
+
+    if (minAgo < peak) {
+      const x1 = minAgo / 5 + 1;
+      result.iobContrib = deliveredInsulin * (1 - 0.001852 * x1 * x1 + 0.001852 * x1);
+      result.activityContrib = sens * deliveredInsulin * (2 / dia / 60 / peak) * minAgo;
+    } else if (minAgo < 180) {
+      const x2 = (minAgo - 75) / 5;
+      result.iobContrib = deliveredInsulin * (0.001323 * x2 * x2 - 0.054233 * x2 + 0.55556);
+      result.activityContrib = sens * deliveredInsulin * (2 / dia / 60 - (minAgo - peak) * 2 / dia / 60 / (60 * 3 - peak));
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Calculate IOB from basal treatments (temp basals)
+ */
+export function fromBasalTreatments(
+  treatments: Treatment[],
+  profile?: IOBProfile,
+  time?: number,
+  spec_profile?: unknown
+): IOBResult {
+  let totalBasalIOB = 0;
+  let totalActivity = 0;
+
+  const currentTime = time || Date.now();
+
+  treatments?.forEach(treatment => {
+    if (treatment.eventType === 'Temp Basal') {
+      const treatmentMills = treatment.mills || new Date(treatment.created_at).getTime();
+
+      if (treatmentMills <= currentTime) {
+        const basalIOB = calcBasalTreatment(treatment, profile, currentTime, spec_profile);
+
+        if (basalIOB?.iobContrib) {
+          totalBasalIOB += basalIOB.iobContrib;
+        }
+
+        if (basalIOB?.activityContrib) {
+          totalActivity += basalIOB.activityContrib;
+        }
+      }
+    }
+  });
+
+  return {
+    basalIob: roundToThreeDecimals(totalBasalIOB),
+    activity: totalActivity,
+    source: 'Care Portal'
+  };
 }
 
 /**

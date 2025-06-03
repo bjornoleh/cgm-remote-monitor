@@ -35,6 +35,7 @@ export interface LoopIOBData {
 export interface OpenAPSIOBData {
   iob: number;
   basalIob?: number;
+  basaliob?: number;  // Backend uses lowercase version
   activity?: number;
   timestamp?: string;
   time?: string;
