@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Button } from "$lib/components/ui/button";
   import {
     Table,
     TableBody,
@@ -16,9 +17,8 @@
     onDelete: (treatment: Treatment) => void;
   }
   let { treatments, onEdit, onDelete }: Props = $props();
-
   // Table column definitions
-  const columns = [
+  const allColumns = [
     { key: "time", label: "Time" },
     { key: "eventType", label: "Event Type" },
     { key: "bloodGlucose", label: "Blood Glucose" },
@@ -34,6 +34,62 @@
     { key: "notes", label: "Notes" },
     { key: "actions", label: "Actions" },
   ];
+
+  // Function to check if a column has any data
+  function hasColumnData(columnKey: string, treatments: Treatment[]): boolean {
+    if (columnKey === "time" || columnKey === "actions") {
+      return true; // Always show time and actions columns
+    }
+
+    return treatments.some((treatment) => {
+      switch (columnKey) {
+        case "eventType":
+          return treatment.eventType && treatment.eventType.trim() !== "";
+        case "bloodGlucose":
+          return treatment.glucose !== undefined && treatment.glucose !== null;
+        case "insulin":
+          return treatment.insulin !== undefined && treatment.insulin !== null;
+        case "carbs":
+          return (
+            (treatment.carbs !== undefined && treatment.carbs !== null) ||
+            (treatment.food !== undefined && treatment.food !== null) ||
+            (treatment.absorptionTime !== undefined &&
+              treatment.absorptionTime !== null)
+          );
+        case "protein":
+          return treatment.protein !== undefined && treatment.protein !== null;
+        case "fat":
+          return treatment.fat !== undefined && treatment.fat !== null;
+        case "duration":
+          return (
+            treatment.duration !== undefined && treatment.duration !== null
+          );
+        case "percent":
+          return treatment.percent !== undefined && treatment.percent !== null;
+        case "basalValue":
+          return (
+            (treatment.absolute !== undefined && treatment.absolute !== null) ||
+            (treatment.rate !== undefined && treatment.rate !== null)
+          );
+        case "profile":
+          return treatment.profile && treatment.profile.trim() !== "";
+        case "enteredBy":
+          return treatment.enteredBy && treatment.enteredBy.trim() !== "";
+        case "notes":
+          return (
+            (treatment.notes && treatment.notes.trim() !== "") ||
+            (treatment.reason && treatment.reason.trim() !== "")
+          );
+        default:
+          return false;
+      }
+    });
+  }
+
+  // Filter columns to only show those with data
+  const visibleColumns = $derived(
+    allColumns.filter((column) => hasColumnData(column.key, treatments))
+  );
 
   // Format functions
   function formatDate(dateStr: string | undefined): string {
@@ -135,8 +191,8 @@
 {:else}
   <Table>
     <TableHeader>
-      <TableRow sticky>
-        {#each columns as column}
+      <TableRow class="sticky top-0 bg-background">
+        {#each visibleColumns as column}
           <TableHead class="px-4 py-3 text-left text-sm font-medium">
             {column.label}
           </TableHead>
@@ -146,73 +202,69 @@
     <TableBody>
       {#each treatments as treatment (treatment._id)}
         <TableRow class="border-t border-border hover:bg-muted/50">
-          <TableCell class="px-4 py-3 text-sm">
-            {formatDate(treatment.created_at)}
-          </TableCell>
-          <TableCell class="px-4 py-3 text-sm">
-            <span
-              class="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary border border-primary/20"
+          {#each visibleColumns as column}
+            <TableCell
+              class={`px-4 py-3 text-sm ${column.key === "carbs" ? "max-w-48 truncate" : ""} ${column.key === "notes" ? "max-w-64 truncate" : ""}`}
+              title={column.key === "carbs"
+                ? formatCarbs(treatment)
+                : column.key === "notes"
+                  ? formatNotes(treatment)
+                  : undefined}
             >
-              {treatment.eventType || "-"}
-            </span>
-          </TableCell>
-          <TableCell class="px-4 py-3 text-sm">
-            {formatBloodGlucose(treatment)}
-          </TableCell>
-          <TableCell class="px-4 py-3 text-sm">
-            {formatInsulin(treatment)}
-          </TableCell>
-          <TableCell
-            class="px-4 py-3 text-sm max-w-48 truncate"
-            title={formatCarbs(treatment)}
-          >
-            {formatCarbs(treatment)}
-          </TableCell>
-          <TableCell class="px-4 py-3 text-sm">
-            {formatProtein(treatment)}
-          </TableCell>
-          <TableCell class="px-4 py-3 text-sm">
-            {formatFat(treatment)}
-          </TableCell>
-          <TableCell class="px-4 py-3 text-sm">
-            {formatDuration(treatment)}
-          </TableCell>
-          <TableCell class="px-4 py-3 text-sm">
-            {formatPercent(treatment)}
-          </TableCell>
-          <TableCell class="px-4 py-3 text-sm">
-            {formatBasalValue(treatment)}
-          </TableCell>
-          <TableCell class="px-4 py-3 text-sm">
-            {formatProfile(treatment)}
-          </TableCell>
-          <TableCell class="px-4 py-3 text-sm">
-            {formatEnteredBy(treatment)}
-          </TableCell>
-          <TableCell
-            class="px-4 py-3 text-sm max-w-64 truncate"
-            title={formatNotes(treatment)}
-          >
-            {formatNotes(treatment)}
-          </TableCell>
-          <TableCell class="px-4 py-3 text-sm">
-            <div class="flex gap-2">
-              <button
-                onclick={() => onEdit(treatment)}
-                class="text-primary hover:text-primary/80 p-1 rounded-md hover:bg-primary/10 transition-colors"
-                title="Edit treatment"
-              >
-                <Edit size={16} />
-              </button>
-              <button
-                onclick={() => onDelete(treatment)}
-                class="text-destructive hover:text-destructive/80 p-1 rounded-md hover:bg-destructive/10 transition-colors"
-                title="Delete treatment"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-          </TableCell>
+              {#if column.key === "time"}
+                {formatDate(treatment.created_at)}
+              {:else if column.key === "eventType"}
+                <span
+                  class="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary border border-primary/20"
+                >
+                  {treatment.eventType || "-"}
+                </span>
+              {:else if column.key === "bloodGlucose"}
+                {formatBloodGlucose(treatment)}
+              {:else if column.key === "insulin"}
+                {formatInsulin(treatment)}
+              {:else if column.key === "carbs"}
+                {formatCarbs(treatment)}
+              {:else if column.key === "protein"}
+                {formatProtein(treatment)}
+              {:else if column.key === "fat"}
+                {formatFat(treatment)}
+              {:else if column.key === "duration"}
+                {formatDuration(treatment)}
+              {:else if column.key === "percent"}
+                {formatPercent(treatment)}
+              {:else if column.key === "basalValue"}
+                {formatBasalValue(treatment)}
+              {:else if column.key === "profile"}
+                {formatProfile(treatment)}
+              {:else if column.key === "enteredBy"}
+                {formatEnteredBy(treatment)}
+              {:else if column.key === "notes"}
+                {formatNotes(treatment)}
+              {:else if column.key === "actions"}
+                <div class="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onclick={() => onEdit(treatment)}
+                    class="h-8 w-8 p-0"
+                    title="Edit treatment"
+                  >
+                    <Edit size={16} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onclick={() => onDelete(treatment)}
+                    class="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                    title="Delete treatment"
+                  >
+                    <Trash2 size={16} />
+                  </Button>
+                </div>
+              {/if}
+            </TableCell>
+          {/each}
         </TableRow>
       {/each}
     </TableBody>

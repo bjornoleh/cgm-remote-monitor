@@ -12,6 +12,7 @@
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
+  import { Badge } from "$lib/components/ui/badge";
   import * as Card from "$lib/components/ui/card";
   import * as Alert from "$lib/components/ui/alert";
 
@@ -258,7 +259,9 @@
     >
       <div class="flex items-center justify-between">
         <span class="text-sm">{statusMessage.text}</span>
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onclick={() => (statusMessage = null)}
           class="text-{statusMessage.type === 'success'
             ? 'green'
@@ -267,7 +270,7 @@
             : 'red'}-800"
         >
           ✕
-        </button>
+        </Button>
       </div>
     </div>
   {/if}
@@ -286,12 +289,7 @@
       <div class="text-destructive text-6xl mb-4">⚠</div>
       <h2 class="text-xl font-semibold mb-2">Error Loading Treatments</h2>
       <p class="text-muted-foreground mb-4">{data.error}</p>
-      <button
-        onclick={() => window.location.reload()}
-        class="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-      >
-        Retry
-      </button>
+      <Button onclick={() => window.location.reload()}>Retry</Button>
     </div>
   {:else}
     <!-- Controls -->
@@ -322,33 +320,29 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Search -->
         <div>
-          <label for="search-input" class="block text-sm font-medium mb-2">
-            Search
-          </label>
-          <input
+          <Label for="search-input">Search</Label>
+          <Input
             id="search-input"
             bind:value={searchQuery}
             type="text"
             placeholder="Search by event type, notes, entered by..."
-            class="w-full px-3 py-2 border border-input rounded-lg bg-background"
           />
         </div>
 
         <!-- Event Type Filter -->
         <div>
-          <div class="block text-sm font-medium mb-2">Event Types</div>
-          <div class="flex flex-wrap gap-2">
+          <Label>Event Types</Label>
+          <div class="flex flex-wrap gap-2 mt-2">
             {#each eventTypes as eventType (eventType)}
-              <button
+              <Badge
+                variant={selectedEventTypes.includes(eventType)
+                  ? "default"
+                  : "outline"}
+                class="cursor-pointer"
                 onclick={() => toggleEventType(eventType)}
-                class="px-3 py-1 text-sm rounded-full border transition-colors {selectedEventTypes.includes(
-                  eventType
-                )
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-background text-foreground border-border hover:bg-muted'}"
               >
                 {eventType}
-              </button>
+              </Badge>
             {/each}
           </div>
         </div>
@@ -361,12 +355,9 @@
             Showing {filteredTreatments.length} of {data.data.treatments.length}
             treatments
           </div>
-          <button
-            onclick={clearFilters}
-            class="text-sm text-primary hover:text-primary/80"
-          >
+          <Button variant="ghost" size="sm" onclick={clearFilters}>
             Clear Filters
-          </button>
+          </Button>
         </div>
       {/if}
     </div>
@@ -492,33 +483,3 @@
     </Card.Root>
   </div>
 {/if}
-
-<style>
-  .container {
-    max-width: 1400px;
-  }
-
-  /* Improve table readability */
-  table {
-    border-collapse: separate;
-    border-spacing: 0;
-  }
-
-  th {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-
-  /* Responsive table */
-  @media (max-width: 768px) {
-    .overflow-x-auto {
-      font-size: 0.875rem;
-    }
-
-    th,
-    td {
-      padding: 0.5rem;
-    }
-  }
-</style>

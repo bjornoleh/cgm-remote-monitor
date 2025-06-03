@@ -40,7 +40,7 @@ const RECENCY_THRESHOLD = 30 * 60 * 1000; // 30 minutes in milliseconds
 /**
  * Main IOB calculation function that combines device status and treatment data
  */
-export function calcTotal(
+export function calculateInsulinOnBoard(
   treatments: Treatment[],
   devicestatus: DeviceStatus[],
   profile?: IOBProfile,
@@ -162,7 +162,7 @@ export function fromDeviceStatus(devicestatusEntry: DeviceStatus): IOBResult {
 
     return {
       iob: openAPSData.iob,
-      basaliob: openAPSData.basaliob,
+      basalIob: openAPSData.basaliob,
       activity: openAPSData.activity,
       source: 'OpenAPS',
       device: devicestatusEntry.device,
@@ -174,7 +174,7 @@ export function fromDeviceStatus(devicestatusEntry: DeviceStatus): IOBResult {
     const iobPump = devicestatusEntry.pump.iob;
     const hasConnect = 'connect' in devicestatusEntry;
     return {
-      iob: iobPump.iob || iobPump.bolusiob,
+      iob: iobPump.iob || iobPump.bolusIob,
       source: hasConnect ? 'MM Connect' : undefined,
       device: devicestatusEntry.device,
       mills: devicestatusEntry.mills
@@ -294,7 +294,7 @@ export function calculateIOBForTime(treatments: Treatment[], targetTime: number)
   const result = fromTreatments(treatments, undefined, targetTime);
 
   return {
-    basalIob: result.basaliob || 0,
+    basalIob: result.basalIob || 0,
     tempIob: result.iob || 0
   };
 }

@@ -1,4 +1,4 @@
-import type { Entry } from '$lib';
+import type { Entry, Sgv } from '$lib';
 import { SENSOR_SPECS } from './time-in-range';
 
 /**
@@ -24,6 +24,18 @@ export interface GlycemicVariability {
   glycemicVariabilityIndex: number;
   /** Patient Glycemic Status - combines GVI, mean glucose, and time in range; ≤35 excellent (non-diabetic), 35-100 good, 100-150 poor, >150 very poor */
   patientGlycemicStatus: number;
+  /** Estimated A1C from average glucose */
+  estimatedA1c: number;
+}
+
+/**
+ * Calculate estimated A1C from average glucose
+ * Using the formula: A1C = (average glucose + 46.7) / 28.7
+ */
+export function calculateEstimatedA1C(averageGlucose: number): number {
+  if (averageGlucose === 0) return 0;
+  const a1c = (averageGlucose + 46.7) / 28.7;
+  return a1c
 }
 
 /**
@@ -31,50 +43,21 @@ export interface GlycemicVariability {
  */
 export function calculateGlycemicVariability(values: number[], entries: Entry[]): GlycemicVariability {
   if (values.length < 2) {
-    return {
-      coefficientOfVariation: 0,
-      standardDeviation: 0,
-      meanAmplitudeGlycemicExcursions: 0,
-      continuousOverlappingNetGlycemicAction: 0,
-      averageDailyRiskRange: 0,
-      labilityIndex: 0,
-      jIndex: 0,
-      highBloodGlucoseIndex: 0,
-      lowBloodGlucoseIndex: 0,
-      glycemicVariabilityIndex: 0,
-      patientGlycemicStatus: 0
-    };
+    throw new Error('Not enough data points to calculate glycemic variability metrics');
   }
-
   const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
   const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
   const standardDeviation = Math.sqrt(variance);
   const coefficientOfVariation = (standardDeviation / mean) * 100;
 
-  // MAGE (Mean Amplitude of Glycemic Excursions)
   const mage = calculateMAGE(values);
-
-  // CONGA (Continuous Overlapping Net Glycemic Action)
-  const conga = calculateCONGA(values, 2); // 2-hour CONGA
-
-  // ADRR (Average Daily Risk Range) - simplified calculation
+  const conga = calculateCONGA(values, 2);
   const adrr = calculateADRR(values);
-
-  // Lability Index
   const labilityIndex = calculateLabilityIndex(entries);
-
-  // J-Index
   const jIndex = calculateJIndex(values, mean);
-
-  // HBGI (High Blood Glucose Index)
   const hbgi = calculateHBGI(values);
-
-  // LBGI (Low Blood Glucose Index)
   const lbgi = calculateLBGI(values);
-
-  // GVI (Glycemic Variability Index) - new metric
   const gvi = calculateGVI(values, entries);
-  // PGS (Patient Glycemic Status) - new metric
   const pgs = calculatePGS(values, gvi, mean);
 
   return {
@@ -88,13 +71,13 @@ export function calculateGlycemicVariability(values: number[], entries: Entry[])
     highBloodGlucoseIndex: Math.round(hbgi * 100) / 100,
     lowBloodGlucoseIndex: Math.round(lbgi * 100) / 100,
     glycemicVariabilityIndex: Math.round(gvi * 100) / 100,
-    patientGlycemicStatus: Math.round(pgs * 10) / 10
+    patientGlycemicStatus: Math.round(pgs * 10) / 10,
+    estimatedA1c: calculateEstimatedA1C(mean)
   };
 }
 
 /**
- * MAGE (Mean Amplitude of Glycemic Excursions)
- * Average of all glycemic excursions (except excursion having value <1 SD from mean glucose) in a 24 h time period; Captures short-term, within-day variability
+ * Calculate MAGE (Mean Amplitude of Glycemic Excursions)
  */
 export function calculateMAGE(values: number[]): number {
   if (values.length < 3) return 0;
@@ -126,10 +109,9 @@ export function calculateMAGE(values: number[]): number {
 
 /**
  * Calculate CONGA (Continuous Overlapping Net Glycemic Action)
- * Standard deviation of summated difference between current observation and previous observation; Captures short-term, within-day variability
  */
 export function calculateCONGA(values: number[], hours: number): number {
-  const interval = SENSOR_SPECS.GENERIC_5MIN.interval; // Assume 5-min intervals for CONGA
+  const interval = SENSOR_SPECS.GENERIC_5MIN.interval;
   const pointsPerHour = 60 / interval;
   const windowSize = hours * pointsPerHour;
 
@@ -149,7 +131,6 @@ export function calculateCONGA(values: number[], hours: number): number {
  * Calculate ADRR (Average Daily Risk Range)
  */
 export function calculateADRR(values: number[]): number {
-  // Simplified ADRR calculation
   const logTransformed = values.map(val => Math.log(val));
   const mean = logTransformed.reduce((sum, val) => sum + val, 0) / logTransformed.length;
   const variance = logTransformed.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / logTransformed.length;
@@ -160,7 +141,7 @@ export function calculateADRR(values: number[]): number {
 /**
  * Calculate Lability Index
  */
-export function calculateLabilityIndex(entries: Entry[]): number {
+export function calculateLabilityIndex(entries: Sgv[]): number {
   if (entries.length < 2) return 0;
 
   let totalChange = 0;
@@ -189,22 +170,19 @@ export function calculateJIndex(values: number[], mean: number): number {
  * Calculate HBGI (High Blood Glucose Index)
  * Risk index for hyperglycemia based on Kovatchev et al. methodology
  * Higher values indicate greater risk of high glucose episodes
+ * Low (HBGI ≤4.5), Moderate (4.5 <HBGI ≤9.0), and High (HBGI >9.0).
  */
 export function calculateHBGI(values: number[]): number {
   if (values.length === 0) return 0;
 
   const riskSum = values.reduce((sum, glucose) => {
-    // Convert glucose to risk scale using f(BG) transformation
-    const alpha = 1.084;
-    const beta = 5.381;
-    const gamma = 1.509;
+    // Kovatchev formula: f(BG) = 1.084 * (ln(BG/18)^1.084 - 1.928)
+    // The constant 1.928 ensures f(112.5 mg/dL) = 0 (neutral point)
+    const bgInMmol = glucose / 18;
+    const logBG = Math.log(bgInMmol);
+    const fBG = 1.084 * (Math.pow(logBG, 1.084) - 1.928);
 
-    // Apply log transformation: f(BG) = alpha * (ln(glucose)^beta - gamma)
-    const fBG = alpha * (Math.pow(Math.log(glucose), beta) - gamma);
-
-    // Calculate risk function: r(BG) = 10 * f(BG)^2 if f(BG) > 0, else 0
     const risk = fBG > 0 ? 10 * Math.pow(fBG, 2) : 0;
-
     return sum + risk;
   }, 0);
 
@@ -215,22 +193,19 @@ export function calculateHBGI(values: number[]): number {
  * Calculate LBGI (Low Blood Glucose Index)
  * Risk index for hypoglycemia based on Kovatchev et al. methodology
  * Higher values indicate greater risk of low glucose episodes
+ * Minimal (LBGI ≤1.1), Low (1.1 <LBGI ≤2.5), Moderate (2.5 < LBGI ≤5), and High (LBGI >5.0)
  */
 export function calculateLBGI(values: number[]): number {
   if (values.length === 0) return 0;
 
   const riskSum = values.reduce((sum, glucose) => {
-    // Convert glucose to risk scale using f(BG) transformation
-    const alpha = 1.084;
-    const beta = 5.381;
-    const gamma = 1.509;
+    // Kovatchev formula: f(BG) = 1.084 * (ln(BG/18)^1.084 - 1.928)
+    // The constant 1.928 ensures f(112.5 mg/dL) = 0 (neutral point)
+    const bgInMmol = glucose / 18;
+    const logBG = Math.log(bgInMmol);
+    const fBG = 1.084 * (Math.pow(logBG, 1.084) - 1.928);
 
-    // Apply log transformation: f(BG) = alpha * (ln(glucose)^beta - gamma)
-    const fBG = alpha * (Math.pow(Math.log(glucose), beta) - gamma);
-
-    // Calculate risk function: r(BG) = 10 * f(BG)^2 if f(BG) < 0, else 0
     const risk = fBG < 0 ? 10 * Math.pow(fBG, 2) : 0;
-
     return sum + risk;
   }, 0);
 
@@ -246,10 +221,9 @@ export function calculateLBGI(values: number[]): number {
  * @copyright Dexcom
  * @see https://web.archive.org/web/20160523152519/http://www.healthline.com/diabetesmine/a-new-view-of-glycemic-variability-how-long-is-your-line#1
  */
-export function calculateGVI(values: number[], entries: Entry[]): number {
+export function calculateGVI(values: number[], entries: Sgv[]): number {
   if (values.length < 2 || entries.length < 2) return 1.0;
 
-  // Calculate the actual distance traveled by the glucose line
   let actualDistance = 0;
   let idealTime = 0;
 
@@ -262,16 +236,11 @@ export function calculateGVI(values: number[], entries: Entry[]): number {
 
     if (currentValue <= 0 || nextValue <= 0) continue;
 
-    // Time delta in minutes
     const timeDelta = ((nextEntry.mills || nextEntry.date) - (currentEntry.mills || currentEntry.date)) / (1000 * 60);
 
-    // Skip if time gap is too large (more than 15 minutes)
     if (timeDelta > 15) continue;
 
-    // Glucose delta
     const glucoseDelta = Math.abs(nextValue - currentValue);
-
-    // Distance using trigonometry: sqrt(time^2 + glucose^2)
     const distance = Math.sqrt(Math.pow(timeDelta, 2) + Math.pow(glucoseDelta, 2));
     actualDistance += distance;
     idealTime += timeDelta;
@@ -279,10 +248,7 @@ export function calculateGVI(values: number[], entries: Entry[]): number {
 
   if (idealTime === 0) return 1.0;
 
-  // L0 is the ideal distance (just time, no glucose changes)
   const idealDistance = idealTime;
-
-  // GVI is the ratio of actual distance to ideal distance
   return actualDistance / idealDistance;
 }
 
@@ -299,14 +265,11 @@ export function calculateGVI(values: number[], entries: Entry[]): number {
 export function calculatePGS(values: number[], gvi: number, meanGlucose: number): number {
   if (values.length === 0) return 0;
 
-  // Calculate percentage of time in target range (70-180 mg/dL)
   const targetLow = 70;
   const targetHigh = 180;
 
   const inRangeCount = values.filter(val => val >= targetLow && val <= targetHigh).length;
   const percentTimeInRange = inRangeCount / values.length;
 
-  // PGS formula: GVI × mean glucose × (1 - PTIR)
-  // Where PTIR is percentage of time in range as a decimal (0-1)
   return gvi * meanGlucose * (1 - percentTimeInRange);
 }

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { Button } from "$lib/components/ui/button";
   import LiveChart from "$lib/components/LiveChart.svelte";
   import BGStatus from "$lib/components/BGStatus.svelte";
   import TreatmentPills from "$lib/components/TreatmentPills.svelte";
@@ -304,12 +305,9 @@
         <div class="text-destructive text-6xl">⚠</div>
         <h1 class="text-2xl font-bold">Connection Error</h1>
         <p class="text-muted-foreground">{data.error}</p>
-        <button
-          onclick={() => window.location.reload()}
-          class="bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-        >
+        <Button onclick={() => window.location.reload()} class="px-4 py-2">
           Retry
-        </button>
+        </Button>
       </div>
     </div>
 
@@ -325,50 +323,57 @@
 
           <div class="flex items-center space-x-2">
             <!-- Quick action buttons -->
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onclick={() => (showBolusCalculator = true)}
-              class="hidden sm:flex items-center gap-2 bg-secondary text-secondary-foreground px-3 py-2 rounded-lg text-sm hover:bg-secondary/80 transition-colors"
+              class="hidden sm:flex items-center gap-2"
               title="Bolus Calculator (Ctrl+B)"
             >
               <span>💉</span>
               <span class="hidden md:inline">Bolus</span>
-            </button>
+            </Button>
 
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onclick={() => (showCarePortal = true)}
-              class="hidden sm:flex items-center gap-2 bg-secondary text-secondary-foreground px-3 py-2 rounded-lg text-sm hover:bg-secondary/80 transition-colors"
+              class="hidden sm:flex items-center gap-2"
               title="Care Portal (Ctrl+C)"
             >
               <span>📝</span>
               <span class="hidden md:inline">Care</span>
-            </button>
+            </Button>
 
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onclick={() => (showSettings = true)}
-              class="hidden sm:flex items-center gap-2 bg-secondary text-secondary-foreground px-3 py-2 rounded-lg text-sm hover:bg-secondary/80 transition-colors"
+              class="hidden sm:flex items-center gap-2"
               title="Settings (Ctrl+,)"
             >
               <span>⚙️</span>
               <span class="hidden md:inline">Settings</span>
-            </button>
+            </Button>
 
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onclick={() => (showHelpDialog = true)}
-              class="hidden sm:flex items-center gap-2 bg-secondary text-secondary-foreground px-3 py-2 rounded-lg text-sm hover:bg-secondary/80 transition-colors"
+              class="hidden sm:flex items-center gap-2"
               title="Help & Shortcuts (F1)"
             >
               <span>❓</span>
               <span class="hidden lg:inline">Help</span>
-            </button>
-
+            </Button>
             {#if clientState.inRetroMode}
-              <button
+              <Button
                 onclick={resetToLive}
-                class="bg-primary text-primary-foreground px-3 py-1 rounded-lg text-sm hover:bg-primary/90 transition-colors"
+                size="sm"
                 title="Return to Live View (Ctrl+R)"
               >
                 Return to Live
-              </button>
+              </Button>
             {/if}
 
             <div class="flex items-center gap-2 text-sm text-muted-foreground">
@@ -473,13 +478,15 @@
                 {clientState.currentAnnouncement.message}
               </p>
             </div>
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onclick={() =>
                 updateClientState({ currentAnnouncement: undefined })}
               class="text-warning-foreground hover:text-warning-foreground/80"
             >
               ✕
-            </button>
+            </Button>
           </div>
         </div>
       {/if}
@@ -492,77 +499,82 @@
         <div
           class="absolute bottom-16 right-0 bg-background border border-border rounded-lg shadow-lg p-2 min-w-48 space-y-1 action-menu"
         >
-          <button
+          <Button
+            variant="ghost"
             onclick={() => {
               showBolusCalculator = true;
               showActionMenu = false;
             }}
-            class="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-muted rounded-md transition-colors"
+            class="w-full flex items-center gap-3 justify-start"
           >
             <span class="text-xl">💉</span>
             <span>Bolus Calculator</span>
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             onclick={() => {
               showCarePortal = true;
               showActionMenu = false;
             }}
-            class="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-muted rounded-md transition-colors"
+            class="w-full flex items-center gap-3 justify-start"
           >
             <span class="text-xl">📝</span>
             <span>Care Portal</span>
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             onclick={() => {
               showSettings = true;
               showActionMenu = false;
             }}
-            class="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-muted rounded-md transition-colors"
+            class="w-full flex items-center gap-3 justify-start"
           >
             <span class="text-xl">⚙️</span>
             <span>Settings</span>
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             onclick={() => {
               showReportsMenu = true;
               showActionMenu = false;
             }}
-            class="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-muted rounded-md transition-colors"
+            class="w-full flex items-center gap-3 justify-start"
           >
             <span class="text-xl">📊</span>
             <span>Reports</span>
-          </button>
+          </Button>
           <hr class="border-border" />
-          <button
+          <Button
+            variant="ghost"
             onclick={resetToLive}
-            class="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-muted rounded-md transition-colors"
+            class="w-full flex items-center gap-3 justify-start"
           >
             <span class="text-xl">🔄</span>
             <span>Reset to Live</span>
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             onclick={() => {
               showHelpDialog = true;
               showActionMenu = false;
             }}
-            class="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-muted rounded-md transition-colors"
+            class="w-full flex items-center gap-3 justify-start"
           >
             <span class="text-xl">❓</span>
             <span>Help & Shortcuts</span>
-          </button>
+          </Button>
         </div>
       {/if}
-
       <!-- Main FAB -->
-      <button
+      <Button
         onclick={() => (showActionMenu = !showActionMenu)}
-        class="w-14 h-14 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-all duration-200 flex items-center justify-center text-xl fab {showActionMenu
+        class="w-14 h-14 rounded-full text-xl {showActionMenu
           ? 'rotate-45'
           : ''}"
         title="Open action menu"
       >
         {showActionMenu ? "✕" : "+"}
-      </button>
+      </Button>
     </div>
   {/if}
 </div>
@@ -818,22 +830,6 @@
       transform: translateY(0);
     }
   }
-
-  /* Improve floating action button */
-  .fab {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    transition: all 0.2s ease;
-  }
-
-  .fab:hover {
-    transform: scale(1.05);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-  }
-
-  .fab:active {
-    transform: scale(0.95);
-  }
-
   /* Custom scrollbar for help dialog */
   .help-dialog {
     scrollbar-width: thin;

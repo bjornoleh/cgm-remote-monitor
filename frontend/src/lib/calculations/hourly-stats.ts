@@ -241,7 +241,7 @@ export async function processHourlyStats(
   fetch: typeof globalThis.fetch,
   startDate: Date,
   endDate: Date
-): Promise<{ hourlyStats: HourlyStats[]; boxPlotData: HourlyBoxPlotData[] }> {
+) {
   // Fetch data from APIs
   const [readings, treatments] = await Promise.all([
     fetchSGVData(fetch, startDate, endDate),
@@ -263,5 +263,5 @@ export async function processHourlyStats(
     boxPlotData.push(boxPlot);
   }
 
-  return { hourlyStats, boxPlotData };
+  return { hourlyStats, boxPlotData, readings, treatments };
 }

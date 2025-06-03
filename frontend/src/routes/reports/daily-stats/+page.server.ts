@@ -12,43 +12,9 @@ interface DayStats {
   glucoseReadings: number[];
 }
 
-/**
- * Convert glucose analytics TIR to legacy format
- */
-function convertTIRFormat(analytics: ReturnType<typeof analyzeGlucoseData>): TimeInRangeMetrics {
-  return {
-    percentages: {
-      severeLow: analytics.timeInRange.percentages.severeLow,
-      low: analytics.timeInRange.percentages.low,
-      target: analytics.timeInRange.percentages.target,
-      high: analytics.timeInRange.percentages.high,
-      severeHigh: analytics.timeInRange.percentages.severeHigh
-    },
-    durations: {
-      severeLow: analytics.timeInRange.durations.severeLow,
-      low: analytics.timeInRange.durations.low,
-      target: analytics.timeInRange.durations.target,
-      high: analytics.timeInRange.durations.high,
-      severeHigh: analytics.timeInRange.durations.severeHigh
-    },
-    episodes: {
-      severeLow: analytics.timeInRange.episodes.severeLow,
-      low: analytics.timeInRange.episodes.low,
-      high: analytics.timeInRange.episodes.high,
-      severeHigh: analytics.timeInRange.episodes.severeHigh
-    }
-  };
-}
 
-/**
- * Calculate estimated A1C from average glucose
- * Using the formula: A1C = (average glucose + 46.7) / 28.7
- */
-function calculateEstimatedA1C(averageGlucose: number): string {
-  if (averageGlucose === 0) return "0.0";
-  const a1c = (averageGlucose + 46.7) / 28.7;
-  return a1c.toFixed(1);
-}
+
+
 
 /**
  * Process daily statistics from SGV data for a specific day using new analytics
@@ -66,32 +32,14 @@ async function processDayStats(fetch: typeof globalThis.fetch, date: Date): Prom
       'find[date][$lte]': endOfDay.getTime().toString(),
       count: '1000'
     }
-  });  if (!response.success || !response.data) {
+  });
+  if (!response.success || !response.data) {
     // Return default values if no data
-    return {
-      date,
-      averageGlucose: 0,
-      timeInRanges: {
-        percentages: { severeLow: 0, low: 0, target: 0, high: 0, severeHigh: 0 },
-        durations: { severeLow: 0, low: 0, target: 0, high: 0, severeHigh: 0 },
-        episodes: { severeLow: 0, low: 0, high: 0, severeHigh: 0 }
-      },
-      glucoseReadings: []
-    };
+    throw new Error(`Failed to fetch SGV data for ${date.toISOString()}: ${response.error || 'Unknown error'}`);
   }
   const readings = response.data;
-    // Convert SGV entries to Entry format for analytics
-  const entries = readings.map(reading => ({
-    _id: reading._id,
-    type: reading.type,
-    sgv: reading.sgv,
-    mills: reading.mills,
-    date: reading.date,
-    direction: reading.direction
-  }));
-
-  // Use new glucose analytics
-  const analytics = analyzeGlucoseData(entries, [], {
+  // Use new glucose analytics directly with SGV data
+  const analytics = analyzeGlucoseData(readings, [], {
     thresholds: {
       severeLow: 54,
       low: 70,
@@ -106,7 +54,7 @@ async function processDayStats(fetch: typeof globalThis.fetch, date: Date): Prom
   return {
     date,
     averageGlucose: Math.round(analytics.basicStats.mean),
-    timeInRanges: convertTIRFormat(analytics),
+    timeInRanges: analytics.timeInRange,
     glucoseReadings: readings.map(reading => reading.sgv)
   };
 }
@@ -185,29 +133,9 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
         },
         sensorType: 'GENERIC_5MIN',
         includeLoopingMetrics: false
-      });      // Use analytics object directly instead of duplicating calculations
-      const estimatedA1c = calculateEstimatedA1C(analytics.basicStats.mean);
+      });
       const highEvents = analytics.timeInRange.episodes.high + analytics.timeInRange.episodes.severeHigh;
       const lowEvents = analytics.timeInRange.episodes.low + analytics.timeInRange.episodes.severeLow;
-
-      // Calculate CGM active percentage using enhanced data quality assessment
-      // This properly handles different sensor types and their expected reading intervals
-      const entries = readings.map(reading => ({
-        _id: reading._id,
-        type: 'sgv' as const,
-        mills: reading.mills,
-        date: reading.date,
-        mgdl: reading.sgv,
-        direction: reading.direction
-      }));
-
-      const cgmActivePercent = calculateCGMActivePercent(
-        entries,
-        startDate,
-        endDate,
-        'GENERIC_5MIN' // Use sensor type from analytics config when available
-      );
-
       // Calculate total days for display
       const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
 
@@ -219,7 +147,8 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
         const dayStats = await processDayStats(fetch, new Date(currentDate));
         dailyStats.push(dayStats);
         currentDate.setDate(currentDate.getDate() + 1);
-      }      // Use the primary date (for single day) or date range
+      }
+      // Use the primary date (for single day) or date range
       const primaryDate = dailyStats.length === 1 ? dailyStats[0].date : null;
       const dailyStatsData = {
         date: primaryDate ? primaryDate.toISOString().split("T")[0] : `${startDate.toISOString().split("T")[0]} to ${endDate.toISOString().split("T")[0]}`,
@@ -229,12 +158,14 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
         MAGE: analytics.glycemicVariability.meanAmplitudeGlycemicExcursions.toFixed(1),
         highEvents,
         lowEvents,
-        cgmActivePercent: Math.min(100, cgmActivePercent), // Cap at 100%
-        estimatedA1c,
-        timeInRanges: convertTIRFormat(analytics),        recentDaysStats: dailyStats, // Renamed for clarity - contains all days in range
+        cgmActivePercent: analytics.dataQuality.cgmActivePercent,
+        estimatedA1c: analytics.glycemicVariability.estimatedA1c,
+        timeInRanges: analytics.timeInRange,
+        recentDaysStats: dailyStats, // Renamed for clarity - contains all days in range
         glucoseReadings: readings.map(reading => reading.sgv),
         // Include full glycemic variability metrics
-        glycemicVariability: analytics.glycemicVariability
+        glycemicVariability: analytics.glycemicVariability,
+        analytics
       };
 
       return {
@@ -248,20 +179,9 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
         analytics,
         stats: dailyStatsData,
         totalReadings: readings.length
-      };    } catch (error) {
-      console.error('Error fetching daily stats data:', error);
-      return {
-        reportName: "Daily Statistics Report",
-        generatedDate: new Date().toLocaleDateString(),
-        dateRange: {
-          from: new Date().toLocaleDateString(),
-          to: new Date().toLocaleDateString(),
-          days: 1
-        },
-        stats: null,
-        totalReadings: 0,
-        error: error instanceof Error ? error.message : "Unknown error occurred"
       };
+    } catch (error) {
+      throw new Error(`Error generating daily stats report: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
   try {
@@ -269,26 +189,7 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
     const statusResponse = await apiGet(fetch, '/api/v1/status.json');
 
     if (!statusResponse.success) {
-      return {
-        loading: false,
-        error: 'Failed to connect to Nightscout server',
-        serverSettings: null,
-        entries: [],
-        deviceStatus: [],
-        treatments: [],
-        dailyStatsReport: {
-          reportName: 'Daily Statistics',
-          generatedDate: new Date().toISOString(),
-          dateRange: {
-            from: new Date().toLocaleDateString(),
-            to: new Date().toLocaleDateString(),
-            days: 1
-          },
-          stats: null,
-          totalReadings: 0,
-          error: 'Failed to connect to server'
-        }
-      };
+      throw new Error(`Failed to fetch server settings: ${statusResponse.error || 'Unknown error'}`);
     }
 
     const serverSettings = statusResponse.data;

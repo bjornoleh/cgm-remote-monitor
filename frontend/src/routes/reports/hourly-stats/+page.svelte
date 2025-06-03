@@ -16,10 +16,9 @@
   }: {
     data: PageData;
   } = $props();
-  const reportData = $derived(data.success ? data.data : null);
-  const hourlyStats = $derived(reportData?.hourlyStats || []);
-  const boxPlotData = $derived(reportData?.boxPlotData || []);
-  const dateRange = $derived(reportData?.dateRange);
+  const hourlyStats = $derived(data?.hourlyStats || []);
+  const boxPlotData = $derived(data?.boxPlotData || []);
+  const dateRange = $derived(data?.dateRange);
 
   // Format hour for display (24-hour to 12-hour format)
   function formatHour(hour: number): string {
@@ -77,163 +76,144 @@
   });
 </script>
 
-<!-- Error State -->
-{#if !data.success}
-  <Card.Root class="border-destructive bg-destructive/10">
-    <Card.Content class="pt-6 text-destructive">
-      <Card.Title class="text-destructive">Error loading data</Card.Title>
-      <Card.Description class="text-destructive/80">
-        {data.error || "Unknown error occurred"}
-      </Card.Description>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <Card.Root>
+    <Card.Content class="pt-6">
+      <Card.Description>Total Readings</Card.Description>
+      <p class="text-2xl font-bold">
+        {summaryStats.totalReadings.toLocaleString()}
+      </p>
     </Card.Content>
   </Card.Root>
-{:else if hourlyStats.length === 0}
-  <Card.Root class="border-muted bg-muted/50">
-    <Card.Content class="pt-6 text-muted-foreground">
-      <Card.Title class="text-muted-foreground">No data available</Card.Title>
-      <Card.Description>
-        No glucose readings found for the selected date range.
-      </Card.Description>
+
+  <Card.Root>
+    <Card.Content class="pt-6">
+      <Card.Description>Overall Average</Card.Description>
+      <p class="text-2xl font-bold">{summaryStats.overallAverage} mg/dL</p>
     </Card.Content>
   </Card.Root>
-{:else}<!-- Summary Cards -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+  {#if summaryStats.highestHour}
     <Card.Root>
       <Card.Content class="pt-6">
-        <Card.Description>Total Readings</Card.Description>
+        <Card.Description>Highest Hour</Card.Description>
         <p class="text-2xl font-bold">
-          {summaryStats.totalReadings.toLocaleString()}
+          {formatHour(summaryStats.highestHour.hour)}
+        </p>
+        <p class="text-sm text-muted-foreground">
+          {formatNumber(summaryStats.highestHour.average)} mg/dL avg
         </p>
       </Card.Content>
     </Card.Root>
+  {/if}
 
+  {#if summaryStats.lowestHour}
     <Card.Root>
       <Card.Content class="pt-6">
-        <Card.Description>Overall Average</Card.Description>
-        <p class="text-2xl font-bold">{summaryStats.overallAverage} mg/dL</p>
+        <Card.Description>Lowest Hour</Card.Description>
+        <p class="text-2xl font-bold">
+          {formatHour(summaryStats.lowestHour.hour)}
+        </p>
+        <p class="text-sm text-muted-foreground">
+          {formatNumber(summaryStats.lowestHour.average)} mg/dL avg
+        </p>
       </Card.Content>
     </Card.Root>
-
-    {#if summaryStats.highestHour}
-      <Card.Root>
-        <Card.Content class="pt-6">
-          <Card.Description>Highest Hour</Card.Description>
-          <p class="text-2xl font-bold">
-            {formatHour(summaryStats.highestHour.hour)}
-          </p>
-          <p class="text-sm text-muted-foreground">
-            {formatNumber(summaryStats.highestHour.average)} mg/dL avg
-          </p>
-        </Card.Content>
-      </Card.Root>
-    {/if}
-
-    {#if summaryStats.lowestHour}
-      <Card.Root>
-        <Card.Content class="pt-6">
-          <Card.Description>Lowest Hour</Card.Description>
-          <p class="text-2xl font-bold">
-            {formatHour(summaryStats.lowestHour.hour)}
-          </p>
-          <p class="text-sm text-muted-foreground">
-            {formatNumber(summaryStats.lowestHour.average)} mg/dL avg
-          </p>
-        </Card.Content>
-      </Card.Root>
-    {/if}
-  </div>
-  <!-- Charts Section -->
-  <div class="space-y-6">
-    <!-- Glucose Box Chart -->
-    <Card.Root>
-      <Card.Header>
-        <Card.Title>Hourly Glucose Distribution</Card.Title>
-      </Card.Header>
-      <Card.Content>
-        <HourlyGlucoseBoxChart {boxPlotData} />
-      </Card.Content>
-    </Card.Root>
-
-    <!-- IOB Chart -->
-    <Card.Root>
-      <Card.Header>
-        <Card.Title>Hourly Insulin-on-Board</Card.Title>
-      </Card.Header>
-      <Card.Content>
-        <HourlyIOBChart {hourlyStats} />
-      </Card.Content>
-    </Card.Root>
-  </div>
-  <!-- Statistics Table -->
+  {/if}
+</div>
+<!-- Charts Section -->
+<div class="space-y-6">
+  <!-- Glucose Box Chart -->
   <Card.Root>
     <Card.Header>
-      <Card.Title>Hourly Statistics</Card.Title>
-      <Card.Description>
-        Detailed breakdown of glucose readings and insulin activity by hour
-      </Card.Description>
+      <Card.Title>Hourly Glucose Distribution</Card.Title>
     </Card.Header>
-    <Card.Content class="p-0">
-      <div class="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead class="w-[100px]">Time</TableHead>
-              <TableHead class="text-right">Readings</TableHead>
-              <TableHead class="text-right">Average</TableHead>
-              <TableHead class="text-right">Min</TableHead>
-              <TableHead class="text-right">Q1</TableHead>
-              <TableHead class="text-right">Median</TableHead>
-              <TableHead class="text-right">Q3</TableHead>
-              <TableHead class="text-right">Max</TableHead>
-              <TableHead class="text-right">Std Dev</TableHead>
-              <TableHead class="text-right">Basal IOB</TableHead>
-              <TableHead class="text-right">Temp IOB</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {#each hourlyStats as stats}
-              <TableRow class="hover:bg-muted/50">
-                <TableCell class="font-medium">
-                  {formatHour(stats.hour)}
-                </TableCell>
-                <TableCell class="text-right">
-                  {stats.readingsCount > 0 ? stats.readingsCount : "—"}
-                </TableCell>
-                <TableCell class="text-right">
-                  {formatNumber(stats.average)}
-                </TableCell>
-                <TableCell class="text-right">
-                  {formatNumber(stats.min)}
-                </TableCell>
-                <TableCell class="text-right">
-                  {formatNumber(stats.quartile25)}
-                </TableCell>
-                <TableCell class="text-right">
-                  {formatNumber(stats.median)}
-                </TableCell>
-                <TableCell class="text-right">
-                  {formatNumber(stats.quartile75)}
-                </TableCell>
-                <TableCell class="text-right">
-                  {formatNumber(stats.max)}
-                </TableCell>
-                <TableCell class="text-right">
-                  {formatNumber(stats.standardDeviation)}
-                </TableCell>
-                <TableCell class="text-right">
-                  {stats.basalIob > 0 ? stats.basalIob.toFixed(2) : "—"}
-                </TableCell>
-                <TableCell class="text-right">
-                  {stats.tempIob > 0 ? stats.tempIob.toFixed(2) : "—"}
-                </TableCell>
-              </TableRow>
-            {/each}
-          </TableBody>
-        </Table>
-      </div>
+    <Card.Content>
+      <HourlyGlucoseBoxChart {boxPlotData} />
     </Card.Content>
   </Card.Root>
-{/if}
+  <!-- IOB Chart -->
+  <Card.Root>
+    <Card.Header>
+      <Card.Title>Hourly Insulin-on-Board</Card.Title>
+    </Card.Header>
+    <Card.Content>
+      <HourlyIOBChart treatments={data.treatments || []} />
+      <!-- Optional: specify different time intervals -->
+      <!-- <HourlyIOBChart treatments={data.treatments || []} intervalMinutes={30} /> -->
+      <!-- <HourlyIOBChart treatments={data.treatments || []} intervalMinutes={5} /> -->
+    </Card.Content>
+  </Card.Root>
+</div>
+<!-- Statistics Table -->
+<Card.Root>
+  <Card.Header>
+    <Card.Title>Hourly Statistics</Card.Title>
+    <Card.Description>
+      Detailed breakdown of glucose readings and insulin activity by hour
+    </Card.Description>
+  </Card.Header>
+  <Card.Content class="p-0">
+    <div class="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead class="w-[100px]">Time</TableHead>
+            <TableHead class="text-right">Readings</TableHead>
+            <TableHead class="text-right">Average</TableHead>
+            <TableHead class="text-right">Min</TableHead>
+            <TableHead class="text-right">Q1</TableHead>
+            <TableHead class="text-right">Median</TableHead>
+            <TableHead class="text-right">Q3</TableHead>
+            <TableHead class="text-right">Max</TableHead>
+            <TableHead class="text-right">Std Dev</TableHead>
+            <TableHead class="text-right">Basal IOB</TableHead>
+            <TableHead class="text-right">Temp IOB</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {#each hourlyStats as stats}
+            <TableRow class="hover:bg-muted/50">
+              <TableCell class="font-medium">
+                {formatHour(stats.hour)}
+              </TableCell>
+              <TableCell class="text-right">
+                {stats.readingsCount > 0 ? stats.readingsCount : "—"}
+              </TableCell>
+              <TableCell class="text-right">
+                {formatNumber(stats.average)}
+              </TableCell>
+              <TableCell class="text-right">
+                {formatNumber(stats.min)}
+              </TableCell>
+              <TableCell class="text-right">
+                {formatNumber(stats.quartile25)}
+              </TableCell>
+              <TableCell class="text-right">
+                {formatNumber(stats.median)}
+              </TableCell>
+              <TableCell class="text-right">
+                {formatNumber(stats.quartile75)}
+              </TableCell>
+              <TableCell class="text-right">
+                {formatNumber(stats.max)}
+              </TableCell>
+              <TableCell class="text-right">
+                {formatNumber(stats.standardDeviation)}
+              </TableCell>
+              <TableCell class="text-right">
+                {stats.basalIob > 0 ? stats.basalIob.toFixed(2) : "—"}
+              </TableCell>
+              <TableCell class="text-right">
+                {stats.tempIob > 0 ? stats.tempIob.toFixed(2) : "—"}
+              </TableCell>
+            </TableRow>
+          {/each}
+        </TableBody>
+      </Table>
+    </div>
+  </Card.Content>
+</Card.Root>
 
 <!-- Date Range Display -->
 {#if dateRange}

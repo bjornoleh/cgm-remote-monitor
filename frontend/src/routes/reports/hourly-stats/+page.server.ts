@@ -33,33 +33,21 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
       startDate.setHours(0, 0, 0, 0);
       endDate.setHours(23, 59, 59, 999);
 
-      const { hourlyStats, boxPlotData } = await processHourlyStats(fetch, startDate, endDate);
+      const { hourlyStats, boxPlotData, readings, treatments } = await processHourlyStats(fetch, startDate, endDate);
 
       return {
-        success: true,
-        data: {
           hourlyStats,
           boxPlotData,
+          readings,
+          treatments,
           dateRange: {
             from: startDate,
             to: endDate
           }
-        }
       };
     } catch (error) {
       console.error('Error loading hourly stats:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-        data: {
-          hourlyStats: [],
-          boxPlotData: [],
-          dateRange: {
-            from: new Date(),
-            to: new Date()
-          }
-        }
-      };
+      throw new Error('Failed to load hourly statistics');
     }
   };
 

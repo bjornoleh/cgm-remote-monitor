@@ -15,24 +15,6 @@ export interface Thresholds {
   bgSevereHigh: number;
 }
 
-// Augmented Treatment interface with additional fields for enhanced functionality
-
-
-export interface TimeInRangeMetrics {
-  percentages: {
-    target: number;
-    tightTarget?: number; // If calculated
-    low: number;
-    severeLow: number;
-    high: number;
-    severeHigh: number;
-  };
-  timeInTargetMinutes?: number;
-  timeInLowMinutes?: number;
-  timeInHighMinutes?: number;
-  // other relevant TIR fields
-}
-
 export interface DayToDayDailyData {
   date: string; // YYYY-MM-DD format
   readingsCount: number;

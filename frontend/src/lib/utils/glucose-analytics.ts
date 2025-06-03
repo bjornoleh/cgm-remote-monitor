@@ -5,7 +5,7 @@
  * with support for compression lows, variable sensor intervals, and DIY looping
  */
 
-import type { Entry, Treatment } from '../../app.d.ts';
+import type { Entry, Treatment } from '$lib';
 // Import modular calculation functions and interfaces
 import { calculateBasicStats, type BasicGlucoseStats } from './calculate/basic-stats.js';
 import {

@@ -1,11 +1,5 @@
 import type { Treatment } from '$lib/stores/client-state.svelte.ts';
 
-// Extended treatment type for IOB calculations
-export interface ExtendedTreatment extends Treatment {
-  absolute?: number;
-  duration?: number;
-}
-
 // IOB calculation result interface
 export interface IOBResult {
   iob?: number;
@@ -14,7 +8,7 @@ export interface IOBResult {
   source?: string;
   device?: string;
   mills?: number;
-  basaliob?: number;
+  basalIob?: number;
   treatmentIob?: number;
   display?: string;
   displayLine?: string;
@@ -40,7 +34,7 @@ export interface LoopIOBData {
 
 export interface OpenAPSIOBData {
   iob: number;
-  basaliob?: number;
+  basalIob?: number;
   activity?: number;
   timestamp?: string;
   time?: string;
@@ -48,8 +42,8 @@ export interface OpenAPSIOBData {
 
 export interface PumpIOBData {
   timestamp: string;
-  bolusiob: number;
-  basaliob: number;
+  bolusIob: number;
+  basalIob: number;
   iob?: number;
 }
 

@@ -5,7 +5,15 @@
 <script lang="ts">
   import { slide } from "svelte/transition";
   import { getClientState } from "$lib/stores/client-state.svelte.ts";
-
+  import { Button } from "$lib/components/ui/button";
+  import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+  } from "$lib/components/ui/card";
+  import { Input } from "$lib/components/ui/input";
+  import { Label } from "$lib/components/ui/label";
   interface EventType {
     val: string;
     name: string;
@@ -22,6 +30,8 @@
     sensor?: boolean;
     reasons?: Reason[];
     targets?: boolean;
+    glucoseType?: boolean;
+    notes?: boolean;
   }
 
   interface Reason {
@@ -225,19 +235,19 @@
     preBolus = "";
     selectedReason = "";
     targetTop = "";
-    targetBottom = "";
-
-    // Auto-fill BG from sensor if available for BG check events
+    targetBottom = ""; // Auto-fill BG from sensor if available for BG check events
     if (selectedEvent?.bg && clientState.latestSGV) {
       const sgv = clientState.latestSGV;
       let bgValue = sgv.mgdl || sgv.sgv;
 
-      if (clientState.settings.units === "mmol") {
+      if (bgValue && clientState.settings.units === "mmol") {
         bgValue = Math.round((bgValue / 18.01559) * 10) / 10;
       }
 
-      bg = bgValue.toString();
-      glucoseType = "Sensor";
+      if (bgValue) {
+        bg = bgValue.toString();
+        glucoseType = "Sensor";
+      }
     }
   }
 
@@ -259,10 +269,9 @@
       alert("Please fill in all required fields");
       return;
     }
-
     const treatment: any = {
       eventType: selectedEventType,
-      created_at: mergedDateTime().toISOString(),
+      created_at: mergedDateTime.toISOString(),
       enteredBy: enteredBy || "CarePortal",
     };
 
@@ -306,458 +315,339 @@
 </script>
 
 <!-- Care Portal Button -->
-<button
-  class="care-portal-btn {isOpen ? 'active' : ''}"
+<Button
+  variant="outline"
+  size="sm"
+  class="care-portal-btn {isOpen ? 'bg-accent' : ''}"
   onclick={toggleDrawer}
   title="Care Portal"
 >
   📝
-</button>
+</Button>
 
 <!-- Care Portal Drawer -->
 {#if isOpen}
   <div class="care-portal-drawer" transition:slide={{ duration: 300 }}>
-    <div class="drawer-header">
-      <h3>Care Portal</h3>
-      <button class="close-btn" onclick={() => (isOpen = false)}>×</button>
-    </div>
+    <Card class="h-full">
+      <CardHeader
+        class="flex flex-row items-center justify-between space-y-0 pb-4"
+      >
+        <CardTitle>Care Portal</CardTitle>
+        <Button variant="ghost" size="sm" onclick={() => (isOpen = false)}>
+          ×
+        </Button>
+      </CardHeader>
 
-    <div class="drawer-content">
-      <!-- Date and Time -->
-      <div class="input-row">
-        <label>Date & Time:</label>
-        <div class="datetime-inputs">
-          <input type="date" bind:value={eventDate} />
-          <input type="time" bind:value={eventTime} />
-        </div>
-      </div>
-
-      <!-- Event Type Selection -->
-      <div class="input-row">
-        <label>Event Type:</label>
-        <select bind:value={selectedEventType} onchange={onEventTypeChange}>
-          <option value="">Select event type</option>
-          {#each eventTypes as eventType}
-            <option value={eventType.val}>{eventType.name}</option>
-          {/each}
-        </select>
-      </div>
-
-      {#if selectedEvent}
-        <!-- Blood Glucose -->
-        {#if selectedEvent.bg}
-          <div class="input-row">
-            <label>Blood Glucose:</label>
-            <div class="bg-input-group">
-              <input
-                type="number"
-                bind:value={bg}
-                placeholder="Enter BG value"
-                step={clientState.settings.units === "mmol" ? "0.1" : "1"}
-              />
-              <span class="units">{clientState.settings.units}</span>
-              {#if selectedEvent.glucoseType}
-                <select bind:value={glucoseType}>
-                  <option value="Finger">Finger</option>
-                  <option value="Sensor">Sensor</option>
-                  <option value="Manual">Manual</option>
-                </select>
-              {/if}
-            </div>
+      <CardContent class="space-y-4">
+        <!-- Date and Time -->
+        <div class="space-y-2">
+          <Label>Date & Time</Label>
+          <div class="flex gap-2">
+            <Input type="date" bind:value={eventDate} class="flex-1" />
+            <Input type="time" bind:value={eventTime} class="flex-1" />
           </div>
-        {/if}
+        </div>
 
-        <!-- Insulin -->
-        {#if selectedEvent.insulin}
-          <div class="input-row">
-            <label>Insulin:</label>
-            <div class="input-with-units">
-              <input
-                type="number"
-                bind:value={insulin}
-                placeholder="Enter insulin dose"
-                step="0.1"
-              />
-              <span class="units">U</span>
-              <button
-                type="button"
-                class="quick-fill-btn"
-                onclick={quickFillFromCalculator}
+        <!-- Event Type Selection -->
+        <div class="space-y-2">
+          <Label for="event-type">Event Type</Label>
+          <select
+            id="event-type"
+            bind:value={selectedEventType}
+            onchange={onEventTypeChange}
+            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <option value="">Select event type</option>
+            {#each eventTypes as eventType}
+              <option value={eventType.val}>{eventType.name}</option>
+            {/each}
+          </select>
+        </div>
+        {#if selectedEvent}
+          <!-- Blood Glucose -->
+          {#if selectedEvent.bg}
+            <div class="space-y-2">
+              <Label>Blood Glucose</Label>
+              <div class="flex items-center gap-2">
+                <Input
+                  type="number"
+                  bind:value={bg}
+                  placeholder="Enter BG value"
+                  step={clientState.settings.units === "mmol" ? "0.1" : "1"}
+                  class="flex-1"
+                />
+                <span class="text-sm text-muted-foreground min-w-[60px]">
+                  {clientState.settings.units}
+                </span>
+                {#if selectedEvent.glucoseType}
+                  <select
+                    bind:value={glucoseType}
+                    class="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <option value="Finger">Finger</option>
+                    <option value="Sensor">Sensor</option>
+                    <option value="Manual">Manual</option>
+                  </select>
+                {/if}
+              </div>
+            </div>
+          {/if}
+          <!-- Insulin -->
+          {#if selectedEvent.insulin}
+            <div class="space-y-2">
+              <Label>Insulin</Label>
+              <div class="flex items-center gap-2">
+                <Input
+                  type="number"
+                  bind:value={insulin}
+                  placeholder="Enter insulin dose"
+                  step="0.1"
+                  class="flex-1"
+                />
+                <span class="text-sm text-muted-foreground min-w-[20px]">
+                  U
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onclick={quickFillFromCalculator}
+                >
+                  Use Calculator
+                </Button>
+              </div>
+            </div>
+          {/if}
+          <!-- Carbohydrates -->
+          {#if selectedEvent.carbs}
+            <div class="space-y-2">
+              <Label>Carbohydrates</Label>
+              <div class="flex items-center gap-2">
+                <Input
+                  type="number"
+                  bind:value={carbs}
+                  placeholder="Enter carb amount"
+                  step="1"
+                  class="flex-1"
+                />
+                <span class="text-sm text-muted-foreground min-w-[20px]">
+                  g
+                </span>
+              </div>
+            </div>
+          {/if}
+
+          <!-- Protein -->
+          {#if selectedEvent.protein}
+            <div class="space-y-2">
+              <Label>Protein</Label>
+              <div class="flex items-center gap-2">
+                <Input
+                  type="number"
+                  bind:value={protein}
+                  placeholder="Enter protein amount"
+                  step="1"
+                  class="flex-1"
+                />
+                <span class="text-sm text-muted-foreground min-w-[20px]">
+                  g
+                </span>
+              </div>
+            </div>
+          {/if}
+
+          <!-- Fat -->
+          {#if selectedEvent.fat}
+            <div class="space-y-2">
+              <Label>Fat</Label>
+              <div class="flex items-center gap-2">
+                <Input
+                  type="number"
+                  bind:value={fat}
+                  placeholder="Enter fat amount"
+                  step="1"
+                  class="flex-1"
+                />
+                <span class="text-sm text-muted-foreground min-w-[20px]">
+                  g
+                </span>
+              </div>
+            </div>
+          {/if}
+
+          <!-- Pre-bolus -->
+          {#if selectedEvent.prebolus}
+            <div class="space-y-2">
+              <Label>Pre-bolus</Label>
+              <div class="flex items-center gap-2">
+                <Input
+                  type="number"
+                  bind:value={preBolus}
+                  placeholder="Pre-bolus time"
+                  step="1"
+                  class="flex-1"
+                />
+                <span class="text-sm text-muted-foreground min-w-[30px]">
+                  min
+                </span>
+              </div>
+            </div>
+          {/if}
+
+          <!-- Duration -->
+          {#if selectedEvent.duration}
+            <div class="space-y-2">
+              <Label>Duration</Label>
+              <div class="flex items-center gap-2">
+                <Input
+                  type="number"
+                  bind:value={duration}
+                  placeholder="Enter duration"
+                  step="1"
+                  class="flex-1"
+                />
+                <span class="text-sm text-muted-foreground min-w-[30px]">
+                  min
+                </span>
+              </div>
+            </div>
+          {/if}
+          <!-- Percent (for temp basal) -->
+          {#if selectedEvent.percent}
+            <div class="space-y-2">
+              <Label>Percent</Label>
+              <div class="flex items-center gap-2">
+                <Input
+                  type="number"
+                  bind:value={percent}
+                  placeholder="Percentage"
+                  step="1"
+                  class="flex-1"
+                />
+                <span class="text-sm text-muted-foreground min-w-[20px]">
+                  %
+                </span>
+              </div>
+            </div>
+          {/if}
+
+          <!-- Absolute (for temp basal) -->
+          {#if selectedEvent.absolute}
+            <div class="space-y-2">
+              <Label>Absolute Rate</Label>
+              <div class="flex items-center gap-2">
+                <Input
+                  type="number"
+                  bind:value={absolute}
+                  placeholder="Absolute rate"
+                  step="0.1"
+                  class="flex-1"
+                />
+                <span class="text-sm text-muted-foreground min-w-[40px]">
+                  U/hr
+                </span>
+              </div>
+            </div>
+          {/if}
+
+          <!-- Reasons -->
+          {#if selectedEvent.reasons && selectedEvent.reasons.length > 0}
+            <div class="space-y-2">
+              <Label for="reason">Reason</Label>
+              <select
+                id="reason"
+                bind:value={selectedReason}
+                onchange={onReasonChange}
+                class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Use Calculator
-              </button>
+                <option value="">Select reason</option>
+                {#each selectedEvent.reasons as reason}
+                  <option value={reason.name}>{reason.name}</option>
+                {/each}
+              </select>
             </div>
+          {/if}
+
+          <!-- Targets (for temporary targets) -->
+          {#if selectedEvent.targets}
+            <Card class="bg-muted/50">
+              <CardContent class="pt-4 space-y-4">
+                <div class="space-y-2">
+                  <Label>Target Low</Label>
+                  <div class="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      bind:value={targetBottom}
+                      placeholder="Low target"
+                      step={clientState.settings.units === "mmol" ? "0.1" : "1"}
+                      class="flex-1"
+                    />
+                    <span class="text-sm text-muted-foreground min-w-[60px]">
+                      {clientState.settings.units}
+                    </span>
+                  </div>
+                </div>
+                <div class="space-y-2">
+                  <Label>Target High</Label>
+                  <div class="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      bind:value={targetTop}
+                      placeholder="High target"
+                      step={clientState.settings.units === "mmol" ? "0.1" : "1"}
+                      class="flex-1"
+                    />
+                    <span class="text-sm text-muted-foreground min-w-[60px]">
+                      {clientState.settings.units}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          {/if}
+          <!-- Notes -->
+          <div class="space-y-2">
+            <Label for="notes">Notes</Label>
+            <textarea
+              id="notes"
+              bind:value={notes}
+              placeholder="Optional notes..."
+              rows="3"
+              class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+            ></textarea>
           </div>
-        {/if}
 
-        <!-- Carbohydrates -->
-        {#if selectedEvent.carbs}
-          <div class="input-row">
-            <label>Carbohydrates:</label>
-            <div class="input-with-units">
-              <input
-                type="number"
-                bind:value={carbs}
-                placeholder="Enter carb amount"
-                step="1"
-              />
-              <span class="units">g</span>
-            </div>
+          <!-- Entered By -->
+          <div class="space-y-2">
+            <Label for="entered-by">Entered by</Label>
+            <Input
+              id="entered-by"
+              type="text"
+              bind:value={enteredBy}
+              placeholder="Your name"
+            />
           </div>
+
+          <!-- Submit Button -->
+          <Button class="w-full" onclick={submitTreatment} disabled={!isValid}>
+            Submit {selectedEvent.name}
+          </Button>
         {/if}
-
-        <!-- Protein -->
-        {#if selectedEvent.protein}
-          <div class="input-row">
-            <label>Protein:</label>
-            <div class="input-with-units">
-              <input
-                type="number"
-                bind:value={protein}
-                placeholder="Enter protein amount"
-                step="1"
-              />
-              <span class="units">g</span>
-            </div>
-          </div>
-        {/if}
-
-        <!-- Fat -->
-        {#if selectedEvent.fat}
-          <div class="input-row">
-            <label>Fat:</label>
-            <div class="input-with-units">
-              <input
-                type="number"
-                bind:value={fat}
-                placeholder="Enter fat amount"
-                step="1"
-              />
-              <span class="units">g</span>
-            </div>
-          </div>
-        {/if}
-
-        <!-- Pre-bolus -->
-        {#if selectedEvent.prebolus}
-          <div class="input-row">
-            <label>Pre-bolus:</label>
-            <div class="input-with-units">
-              <input
-                type="number"
-                bind:value={preBolus}
-                placeholder="Pre-bolus time"
-                step="1"
-              />
-              <span class="units">min</span>
-            </div>
-          </div>
-        {/if}
-
-        <!-- Duration -->
-        {#if selectedEvent.duration}
-          <div class="input-row">
-            <label>Duration:</label>
-            <div class="input-with-units">
-              <input
-                type="number"
-                bind:value={duration}
-                placeholder="Enter duration"
-                step="1"
-              />
-              <span class="units">min</span>
-            </div>
-          </div>
-        {/if}
-
-        <!-- Percent (for temp basal) -->
-        {#if selectedEvent.percent}
-          <div class="input-row">
-            <label>Percent:</label>
-            <div class="input-with-units">
-              <input
-                type="number"
-                bind:value={percent}
-                placeholder="Percentage"
-                step="1"
-              />
-              <span class="units">%</span>
-            </div>
-          </div>
-        {/if}
-
-        <!-- Absolute (for temp basal) -->
-        {#if selectedEvent.absolute}
-          <div class="input-row">
-            <label>Absolute Rate:</label>
-            <div class="input-with-units">
-              <input
-                type="number"
-                bind:value={absolute}
-                placeholder="Absolute rate"
-                step="0.1"
-              />
-              <span class="units">U/hr</span>
-            </div>
-          </div>
-        {/if}
-
-        <!-- Reasons -->
-        {#if selectedEvent.reasons && selectedEvent.reasons.length > 0}
-          <div class="input-row">
-            <label>Reason:</label>
-            <select bind:value={selectedReason} onchange={onReasonChange}>
-              <option value="">Select reason</option>
-              {#each selectedEvent.reasons as reason}
-                <option value={reason.name}>{reason.name}</option>
-              {/each}
-            </select>
-          </div>
-        {/if}
-
-        <!-- Targets (for temporary targets) -->
-        {#if selectedEvent.targets}
-          <div class="target-inputs">
-            <div class="input-row">
-              <label>Target Low:</label>
-              <div class="input-with-units">
-                <input
-                  type="number"
-                  bind:value={targetBottom}
-                  placeholder="Low target"
-                  step={clientState.settings.units === "mmol" ? "0.1" : "1"}
-                />
-                <span class="units">{clientState.settings.units}</span>
-              </div>
-            </div>
-            <div class="input-row">
-              <label>Target High:</label>
-              <div class="input-with-units">
-                <input
-                  type="number"
-                  bind:value={targetTop}
-                  placeholder="High target"
-                  step={clientState.settings.units === "mmol" ? "0.1" : "1"}
-                />
-                <span class="units">{clientState.settings.units}</span>
-              </div>
-            </div>
-          </div>
-        {/if}
-
-        <!-- Notes -->
-        <div class="input-row">
-          <label>Notes:</label>
-          <textarea
-            bind:value={notes}
-            placeholder="Optional notes..."
-            rows="3"
-          ></textarea>
-        </div>
-
-        <!-- Entered By -->
-        <div class="input-row">
-          <label>Entered by:</label>
-          <input type="text" bind:value={enteredBy} placeholder="Your name" />
-        </div>
-
-        <!-- Submit Button -->
-        <button
-          class="submit-btn"
-          onclick={submitTreatment}
-          disabled={!isValid}
-        >
-          Submit {selectedEvent.name}
-        </button>
-      {/if}
-    </div>
+      </CardContent>
+    </Card>
   </div>
 {/if}
 
 <style>
-  .care-portal-btn {
-    background: #4caf50;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 12px 16px;
-    font-size: 18px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-
-  .care-portal-btn:hover {
-    background: #45a049;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  }
-
-  .care-portal-btn.active {
-    background: #45a049;
-  }
-
   .care-portal-drawer {
     position: fixed;
     top: 0;
     right: 0;
-    width: 400px;
     height: 100vh;
-    background: white;
-    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
+    width: 400px;
+    background: var(--background);
+    border-left: 1px solid var(--border);
     z-index: 1000;
     overflow-y: auto;
-  }
-
-  .drawer-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 20px;
-    border-bottom: 1px solid #e0e0e0;
-    background: #f5f5f5;
-  }
-
-  .drawer-header h3 {
-    margin: 0;
-    color: #333;
-  }
-
-  .close-btn {
-    background: none;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-    color: #666;
-    padding: 0;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .drawer-content {
-    padding: 20px;
-  }
-
-  .input-row {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-bottom: 16px;
-  }
-
-  .input-row label {
-    font-weight: 500;
-    color: #333;
-    font-size: 14px;
-  }
-
-  .input-row input,
-  .input-row select,
-  .input-row textarea {
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 14px;
-  }
-
-  .input-row input:focus,
-  .input-row select:focus,
-  .input-row textarea:focus {
-    outline: none;
-    border-color: #4caf50;
-    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
-  }
-
-  .datetime-inputs {
-    display: flex;
-    gap: 8px;
-  }
-
-  .datetime-inputs input {
-    flex: 1;
-  }
-
-  .bg-input-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .bg-input-group input {
-    flex: 1;
-  }
-
-  .bg-input-group select {
-    min-width: 100px;
-  }
-
-  .input-with-units {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .input-with-units input {
-    flex: 1;
-  }
-
-  .units {
-    color: #666;
-    font-size: 14px;
-    min-width: 30px;
-  }
-
-  .quick-fill-btn {
-    background: #2196f3;
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-    white-space: nowrap;
-  }
-
-  .quick-fill-btn:hover {
-    background: #1976d2;
-  }
-
-  .target-inputs {
-    background: #f9f9f9;
-    padding: 12px;
-    border-radius: 6px;
-    margin-bottom: 16px;
-  }
-
-  .submit-btn {
-    width: 100%;
-    background: #4caf50;
-    color: white;
-    border: none;
-    padding: 14px;
-    border-radius: 6px;
-    font-size: 16px;
-    font-weight: 500;
-    cursor: pointer;
-    margin-top: 20px;
-    transition: background-color 0.2s ease;
-  }
-
-  .submit-btn:hover:not(:disabled) {
-    background: #45a049;
-  }
-
-  .submit-btn:disabled {
-    background: #ccc;
-    cursor: not-allowed;
-  }
-
-  textarea {
-    resize: vertical;
-    min-height: 60px;
   }
 
   @media (max-width: 768px) {

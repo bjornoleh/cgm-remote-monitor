@@ -1,16 +1,19 @@
-<!--
-  Settings Component - Handles user preferences and Nightscout configuration
--->
 <script lang="ts">
 	import { slide } from 'svelte/transition';
 	import { getClientState, updateClientState, type ClientSettings } from '$lib/stores/client-state.svelte.ts';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
+	import { Checkbox } from '$lib/components/ui/checkbox';
+	import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '$lib/components/ui/select';
+	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 
 	const clientState = getClientState();
 
 	// Component state
 	let isOpen = $state(false);
 	let activeTab = $state('general');
-	
+
 	// Local settings state for editing
 	let localSettings = $state<ClientSettings>({ ...clientState.settings });
 
@@ -100,13 +103,13 @@
 	function saveSettings() {
 		// Update the client state with new settings
 		updateClientState({ settings: localSettings });
-		
+
 		// Save to localStorage for persistence
 		localStorage.setItem('nightscout-settings', JSON.stringify(localSettings));
-		
+
 		// TODO: Send settings to server if needed
 		console.log('Settings saved:', localSettings);
-		
+
 		isOpen = false;
 	}
 
@@ -157,7 +160,7 @@
 	function togglePlugin(plugin: string) {
 		const plugins = localSettings.showPlugins || [];
 		const index = plugins.indexOf(plugin);
-		
+
 		if (index > -1) {
 			localSettings.showPlugins = plugins.filter(p => p !== plugin);
 		} else {
@@ -183,425 +186,489 @@
 </script>
 
 <!-- Settings Button -->
-<button 
-	class="settings-btn {isOpen ? 'active' : ''}"
+<Button
+	variant={isOpen ? "default" : "secondary"}
 	onclick={toggleDrawer}
 	title="Settings"
+	class="settings-btn"
 >
 	⚙️
-</button>
+</Button>
 
 <!-- Settings Drawer -->
 {#if isOpen}
-	<div class="settings-drawer" transition:slide={{duration: 300}}>
-		<div class="drawer-header">
+	<div class="settings-drawer" transition:slide={{duration: 300}}>		<div class="drawer-header">
 			<h3>Settings</h3>
-			<button class="close-btn" onclick={() => isOpen = false}>×</button>
+			<Button variant="ghost" size="sm" onclick={() => isOpen = false} class="close-btn">×</Button>
 		</div>
-
 		<!-- Tab Navigation -->
 		<div class="tab-nav">
-			<button 
+			<Button
+				variant="ghost"
 				class="tab-btn {activeTab === 'general' ? 'active' : ''}"
 				onclick={() => switchTab('general')}
 			>
 				General
-			</button>
-			<button 
+			</Button>
+			<Button
+				variant="ghost"
 				class="tab-btn {activeTab === 'alarms' ? 'active' : ''}"
 				onclick={() => switchTab('alarms')}
 			>
 				Alarms
-			</button>
-			<button 
+			</Button>
+			<Button
+				variant="ghost"
 				class="tab-btn {activeTab === 'display' ? 'active' : ''}"
 				onclick={() => switchTab('display')}
 			>
 				Display
-			</button>
-			<button 
+			</Button>
+			<Button
+				variant="ghost"
 				class="tab-btn {activeTab === 'plugins' ? 'active' : ''}"
 				onclick={() => switchTab('plugins')}
 			>
 				Plugins
-			</button>
+			</Button>
 		</div>
 
 		<div class="drawer-content">
-			<!-- General Tab -->
-			{#if activeTab === 'general'}
-				<div class="settings-section">
-					<h4>Units & Format</h4>
-					
-					<div class="input-row">
-						<label>Blood Glucose Units:</label>
-						<select bind:value={localSettings.units}>
-							{#each unitOptions as option}
-								<option value={option.value}>{option.label}</option>
-							{/each}
-						</select>
-					</div>
+			<!-- General Tab -->			{#if activeTab === 'general'}
+				<Card class="settings-section">
+					<CardHeader>
+						<CardTitle>Units & Format</CardTitle>
+					</CardHeader>
+					<CardContent class="space-y-4">
+						<div class="input-row">
+							<Label for="units">Blood Glucose Units:</Label>
+							<Select bind:value={localSettings.units}>
+								<SelectTrigger>
+									<SelectValue placeholder="Select units" />
+								</SelectTrigger>
+								<SelectContent>
+									{#each unitOptions as option}
+										<SelectItem value={option.value}>{option.label}</SelectItem>
+									{/each}
+								</SelectContent>
+							</Select>
+						</div>
 
-					<div class="input-row">
-						<label>Time Format:</label>
-						<select bind:value={localSettings.timeFormat}>
-							{#each timeFormatOptions as option}
-								<option value={option.value}>{option.label}</option>
-							{/each}
-						</select>
-					</div>
+						<div class="input-row">
+							<Label for="timeFormat">Time Format:</Label>
+							<Select bind:value={localSettings.timeFormat}>
+								<SelectTrigger>
+									<SelectValue placeholder="Select time format" />
+								</SelectTrigger>
+								<SelectContent>
+									{#each timeFormatOptions as option}
+										<SelectItem value={option.value}>{option.label}</SelectItem>
+									{/each}
+								</SelectContent>
+							</Select>
+						</div>
 
-					<div class="input-row">
-						<label>Language:</label>
-						<select bind:value={localSettings.language}>
-							{#each languageOptions as option}
-								<option value={option.value}>{option.label}</option>
-							{/each}
-						</select>
-					</div>
+						<div class="input-row">
+							<Label for="language">Language:</Label>
+							<Select bind:value={localSettings.language}>
+								<SelectTrigger>
+									<SelectValue placeholder="Select language" />
+								</SelectTrigger>
+								<SelectContent>
+									{#each languageOptions as option}
+										<SelectItem value={option.value}>{option.label}</SelectItem>
+									{/each}
+								</SelectContent>
+							</Select>
+						</div>
 
-					<div class="input-row">
-						<label>Focus Hours:</label>
-						<select bind:value={localSettings.focusHours}>
-							{#each focusHoursOptions as option}
-								<option value={option.value}>{option.label}</option>
-							{/each}
-						</select>
-					</div>
-				</div>
+						<div class="input-row">
+							<Label for="focusHours">Focus Hours:</Label>
+							<Select bind:value={localSettings.focusHours}>
+								<SelectTrigger>
+									<SelectValue placeholder="Select focus hours" />
+								</SelectTrigger>
+								<SelectContent>
+									{#each focusHoursOptions as option}
+										<SelectItem value={option.value}>{option.label}</SelectItem>
+									{/each}
+								</SelectContent>
+							</Select>
+						</div>
+					</CardContent>
+				</Card>
 
-				<div class="settings-section">
-					<h4>BG Thresholds</h4>
-					
-					<div class="input-row">
-						<label>Urgent High:</label>
-						<input 
-							type="number" 
-							bind:value={localSettings.thresholds.bgHigh}
-							step={localSettings.units === 'mmol' ? '0.1' : '1'}
-						/>
-						<span class="units">{localSettings.units}</span>
-					</div>
+				<Card class="settings-section">
+					<CardHeader>
+						<CardTitle>BG Target Range</CardTitle>
+						<p class="section-description">
+							Set your target blood glucose range for better visualization.
+						</p>
+					</CardHeader>
+					<CardContent class="space-y-4">
+						<div class="input-row">
+							<Label for="bgHigh">High Alert:</Label>
+							<Input
+								id="bgHigh"
+								type="number"
+								bind:value={localSettings.thresholds.bgHigh}
+								min="100"
+								max="400"
+								step={localSettings.units === 'mmol' ? '0.1' : '1'}
+							/>
+							<span class="units">{localSettings.units}</span>
+						</div>
 
-					<div class="input-row">
-						<label>Target High:</label>
-						<input 
-							type="number" 
-							bind:value={localSettings.thresholds.bgTargetTop}
-							step={localSettings.units === 'mmol' ? '0.1' : '1'}
-						/>
-						<span class="units">{localSettings.units}</span>
-					</div>
+						<div class="input-row">
+							<Label for="bgTargetTop">Target Top:</Label>
+							<Input
+								id="bgTargetTop"
+								type="number"
+								bind:value={localSettings.thresholds.bgTargetTop}
+								min="80"
+								max="300"
+								step={localSettings.units === 'mmol' ? '0.1' : '1'}
+							/>
+							<span class="units">{localSettings.units}</span>
+						</div>
 
-					<div class="input-row">
-						<label>Target Low:</label>
-						<input 
-							type="number" 
-							bind:value={localSettings.thresholds.bgTargetBottom}
-							step={localSettings.units === 'mmol' ? '0.1' : '1'}
-						/>
-						<span class="units">{localSettings.units}</span>
-					</div>
+						<div class="input-row">
+							<Label for="bgTargetBottom">Target Bottom:</Label>
+							<Input
+								id="bgTargetBottom"
+								type="number"
+								bind:value={localSettings.thresholds.bgTargetBottom}
+								min="40"
+								max="150"
+								step={localSettings.units === 'mmol' ? '0.1' : '1'}
+							/>
+							<span class="units">{localSettings.units}</span>
+						</div>
 
-					<div class="input-row">
-						<label>Urgent Low:</label>
-						<input 
-							type="number" 
-							bind:value={localSettings.thresholds.bgLow}
-							step={localSettings.units === 'mmol' ? '0.1' : '1'}
-						/>
-						<span class="units">{localSettings.units}</span>
-					</div>
-				</div>
+						<div class="input-row">
+							<Label for="bgLow">Low Alert:</Label>
+							<Input
+								id="bgLow"
+								type="number"
+								bind:value={localSettings.thresholds.bgLow}
+								min="30"
+								max="100"
+								step={localSettings.units === 'mmol' ? '0.1' : '1'}
+							/>
+							<span class="units">{localSettings.units}</span>
+						</div>
+					</CardContent>				</Card>
 			{/if}
 
 			<!-- Alarms Tab -->
 			{#if activeTab === 'alarms'}
-				<div class="settings-section">
-					<h4>BG Alarms</h4>
-					
-					<div class="checkbox-row">
-						<label>
-							<input type="checkbox" bind:checked={localSettings.alarmUrgentHigh} />
-							Urgent High Alarm
-						</label>
-					</div>
-
-					{#if localSettings.alarmUrgentHigh}
-						<div class="alarm-minutes">
-							<label>Snooze options (minutes):</label>
-							<div class="minutes-list">
-								{#each (localSettings.alarmUrgentHighMins || []) as minutes}
-									<span class="minute-chip">
-										{minutes}
-										<button onclick={() => removeAlarmMinute('alarmUrgentHighMins', minutes)}>×</button>
-									</span>
-								{/each}
-							</div>
-							<select onchange={(e) => addAlarmMinute('alarmUrgentHighMins', parseInt(e.target.value))}>
-								<option value="">Add snooze option</option>
-								{#each alarmMinutesOptions as option}
-									<option value={option.value}>{option.label}</option>
-								{/each}
-							</select>
+				<Card class="settings-section">
+					<CardHeader>
+						<CardTitle>BG Alarms</CardTitle>
+					</CardHeader>
+					<CardContent class="space-y-4">
+						<div class="flex items-center space-x-2">
+							<Checkbox
+								id="alarmUrgentHigh"
+								bind:checked={localSettings.alarmUrgentHigh}
+							/>
+							<Label for="alarmUrgentHigh">Urgent High Alarm</Label>
 						</div>
+
+						{#if localSettings.alarmUrgentHigh}
+							<div class="alarm-minutes">
+								<Label class="text-sm text-muted-foreground">Snooze options (minutes):</Label>
+								<div class="minutes-list">
+									{#each (localSettings.alarmUrgentHighMins || []) as minutes}
+										<span class="minute-chip">
+											{minutes}
+											<Button variant="ghost" size="sm" onclick={() => removeAlarmMinute('alarmUrgentHighMins', minutes)}>×</Button>
+										</span>
+									{/each}
+								</div>
+								<Select onchange={(e) => addAlarmMinute('alarmUrgentHighMins', parseInt(e.target.value))}>
+									<SelectTrigger>
+										<SelectValue placeholder="Add snooze option" />
+									</SelectTrigger>
+									<SelectContent>
+										{#each alarmMinutesOptions as option}
+											<SelectItem value={option.value}>{option.label}</SelectItem>
+										{/each}
+									</SelectContent>
+								</Select>
+							</div>
+						{/if}
+
+						<div class="flex items-center space-x-2">
+							<Checkbox
+								id="alarmHigh"
+								bind:checked={localSettings.alarmHigh}
+							/>
+							<Label for="alarmHigh">High Alarm</Label>
+						</div>
+
+						{#if localSettings.alarmHigh}
+							<div class="alarm-minutes">
+								<Label class="text-sm text-muted-foreground">Snooze options (minutes):</Label>
+								<div class="minutes-list">
+									{#each (localSettings.alarmHighMins || []) as minutes}
+										<span class="minute-chip">
+											{minutes}
+											<Button variant="ghost" size="sm" onclick={() => removeAlarmMinute('alarmHighMins', minutes)}>×</Button>
+										</span>
+									{/each}
+								</div>
+								<Select onchange={(e) => addAlarmMinute('alarmHighMins', parseInt(e.target.value))}>
+									<SelectTrigger>
+										<SelectValue placeholder="Add snooze option" />
+									</SelectTrigger>
+									<SelectContent>
+										{#each alarmMinutesOptions as option}
+											<SelectItem value={option.value}>{option.label}</SelectItem>
+										{/each}
+									</SelectContent>
+								</Select>
+							</div>
 					{/if}
 
-					<div class="checkbox-row">
-						<label>
-							<input type="checkbox" bind:checked={localSettings.alarmHigh} />
-							High Alarm
-						</label>
-					</div>
-
-					{#if localSettings.alarmHigh}
+						<div class="flex items-center space-x-2">
+							<Checkbox
+								id="alarmLow"
+								bind:checked={localSettings.alarmLow}
+							/>
+							<Label for="alarmLow">Low Alarm</Label>
+						</div>					{#if localSettings.alarmLow}
 						<div class="alarm-minutes">
-							<label>Snooze options (minutes):</label>
-							<div class="minutes-list">
-								{#each (localSettings.alarmHighMins || []) as minutes}
-									<span class="minute-chip">
-										{minutes}
-										<button onclick={() => removeAlarmMinute('alarmHighMins', minutes)}>×</button>
-									</span>
-								{/each}
-							</div>
-							<select onchange={(e) => addAlarmMinute('alarmHighMins', parseInt(e.target.value))}>
-								<option value="">Add snooze option</option>
-								{#each alarmMinutesOptions as option}
-									<option value={option.value}>{option.label}</option>
-								{/each}
-							</select>
-						</div>
-					{/if}
-
-					<div class="checkbox-row">
-						<label>
-							<input type="checkbox" bind:checked={localSettings.alarmLow} />
-							Low Alarm
-						</label>
-					</div>
-
-					{#if localSettings.alarmLow}
-						<div class="alarm-minutes">
-							<label>Snooze options (minutes):</label>
+							<Label>Snooze options (minutes):</Label>
 							<div class="minutes-list">
 								{#each (localSettings.alarmLowMins || []) as minutes}
 									<span class="minute-chip">
 										{minutes}
-										<button onclick={() => removeAlarmMinute('alarmLowMins', minutes)}>×</button>
+										<Button variant="ghost" size="sm" onclick={() => removeAlarmMinute('alarmLowMins', minutes)}>×</Button>
 									</span>
 								{/each}
 							</div>
-							<select onchange={(e) => addAlarmMinute('alarmLowMins', parseInt(e.target.value))}>
-								<option value="">Add snooze option</option>
-								{#each alarmMinutesOptions as option}
-									<option value={option.value}>{option.label}</option>
-								{/each}
-							</select>
-						</div>
-					{/if}
+							<Select onValueChange={(value) => addAlarmMinute('alarmLowMins', parseInt(value))}>
+								<SelectTrigger>
+									<SelectValue placeholder="Add snooze option" />
+								</SelectTrigger>
+								<SelectContent>
+									{#each alarmMinutesOptions as option}
+										<SelectItem value={option.value.toString()}>{option.label}</SelectItem>
+									{/each}
+								</SelectContent>
+							</Select>
+						</div>					{/if}
 
-					<div class="checkbox-row">
-						<label>
-							<input type="checkbox" bind:checked={localSettings.alarmUrgentLow} />
-							Urgent Low Alarm
-						</label>
-					</div>
+						<div class="flex items-center space-x-2">
+							<Checkbox
+								id="alarmUrgentLow"
+								bind:checked={localSettings.alarmUrgentLow}
+							/>
+							<Label for="alarmUrgentLow">Urgent Low Alarm</Label>
+						</div>
 
 					{#if localSettings.alarmUrgentLow}
 						<div class="alarm-minutes">
-							<label>Snooze options (minutes):</label>
+							<Label>Snooze options (minutes):</Label>
 							<div class="minutes-list">
 								{#each (localSettings.alarmUrgentLowMins || []) as minutes}
 									<span class="minute-chip">
 										{minutes}
-										<button onclick={() => removeAlarmMinute('alarmUrgentLowMins', minutes)}>×</button>
+										<Button variant="ghost" size="sm" onclick={() => removeAlarmMinute('alarmUrgentLowMins', minutes)}>×</Button>
 									</span>
 								{/each}
 							</div>
-							<select onchange={(e) => addAlarmMinute('alarmUrgentLowMins', parseInt(e.target.value))}>
-								<option value="">Add snooze option</option>
-								{#each alarmMinutesOptions as option}
-									<option value={option.value}>{option.label}</option>
-								{/each}
-							</select>
+							<Select onValueChange={(value) => addAlarmMinute('alarmUrgentLowMins', parseInt(value))}>
+								<SelectTrigger>
+									<SelectValue placeholder="Add snooze option" />
+								</SelectTrigger>
+								<SelectContent>
+									{#each alarmMinutesOptions as option}
+										<SelectItem value={option.value.toString()}>{option.label}</SelectItem>
+									{/each}
+								</SelectContent>
+							</Select>
 						</div>
 					{/if}
-				</div>
+				</Card>
 
-				<div class="settings-section">
-					<h4>Data Staleness Alarms</h4>
-					
-					<div class="checkbox-row">
-						<label>
-							<input type="checkbox" bind:checked={localSettings.alarmTimeagoWarn} />
-							Data Warning Alarm
-						</label>
-					</div>
-
-					{#if localSettings.alarmTimeagoWarn}
-						<div class="input-row">
-							<label>Warning after:</label>
-							<input 
-								type="number" 
-								bind:value={localSettings.alarmTimeagoWarnMins}
-								min="1"
-								max="60"
+				<Card class="settings-section">
+					<CardHeader>
+						<CardTitle>Data Staleness Alarms</CardTitle>
+					</CardHeader>
+					<CardContent class="space-y-4">
+						<div class="flex items-center space-x-2">
+							<Checkbox
+								id="alarmTimeagoWarn"
+								bind:checked={localSettings.alarmTimeagoWarn}
 							/>
-							<span class="units">minutes</span>
+							<Label for="alarmTimeagoWarn">Data Warning Alarm</Label>
 						</div>
-					{/if}
 
-					<div class="checkbox-row">
-						<label>
-							<input type="checkbox" bind:checked={localSettings.alarmTimeagoUrgent} />
-							Data Urgent Alarm
-						</label>
-					</div>
+						{#if localSettings.alarmTimeagoWarn}
+							<div class="input-row">
+								<Label for="warnAfter">Warning after:</Label>
+								<Input
+									id="warnAfter"
+									type="number"
+									bind:value={localSettings.alarmTimeagoWarnMins}
+									min="1"
+									max="60"
+								/>
+								<span class="units">minutes</span>
+							</div>
+						{/if}
 
-					{#if localSettings.alarmTimeagoUrgent}
-						<div class="input-row">
-							<label>Urgent after:</label>
-							<input 
-								type="number" 
-								bind:value={localSettings.alarmTimeagoUrgentMins}
-								min="1"
-								max="120"
+						<div class="flex items-center space-x-2">
+							<Checkbox
+								id="alarmTimeagoUrgent"
+								bind:checked={localSettings.alarmTimeagoUrgent}
 							/>
-							<span class="units">minutes</span>
+							<Label for="alarmTimeagoUrgent">Data Urgent Alarm</Label>
 						</div>
-					{/if}
-				</div>
+
+						{#if localSettings.alarmTimeagoUrgent}
+							<div class="input-row">
+								<Label for="urgentAfter">Urgent after:</Label>
+								<Input
+									id="urgentAfter"
+									type="number"
+									bind:value={localSettings.alarmTimeagoUrgentMins}
+									min="1"
+									max="120"
+								/>
+								<span class="units">minutes</span>
+							</div>
+						{/if}
+					</CardContent>				</Card>
 			{/if}
 
 			<!-- Display Tab -->
 			{#if activeTab === 'display'}
-				<div class="settings-section">
-					<h4>Theme & Appearance</h4>
-					
-					<div class="input-row">
-						<label>Theme:</label>
-						<select bind:value={localSettings.theme}>
-							{#each themeOptions as option}
-								<option value={option.value}>{option.label}</option>
-							{/each}
-						</select>
-					</div>
+				<Card class="settings-section">
+					<CardHeader>
+						<CardTitle>Theme & Appearance</CardTitle>
+					</CardHeader>
+					<CardContent class="space-y-4">
+						<div class="input-row">
+							<Label for="theme">Theme:</Label>
+							<Select bind:value={localSettings.theme}>
+								<SelectTrigger>
+									<SelectValue placeholder="Select theme" />
+								</SelectTrigger>
+								<SelectContent>
+									{#each themeOptions as option}
+										<SelectItem value={option.value}>{option.label}</SelectItem>
+									{/each}
+								</SelectContent>
+							</Select>
+						</div>
 
-					<div class="checkbox-row">
-						<label>
-							<input type="checkbox" bind:checked={localSettings.nightMode} />
-							Night Mode
-						</label>
-					</div>
+						<div class="flex items-center space-x-2">
+							<Checkbox
+								id="nightMode"
+								bind:checked={localSettings.nightMode}
+							/>
+							<Label for="nightMode">Night Mode</Label>
+						</div>
 
-					<div class="checkbox-row">
-						<label>
-							<input type="checkbox" bind:checked={localSettings.showForecast} />
-							Show Forecast
-						</label>
-					</div>
-				</div>
+						<div class="flex items-center space-x-2">
+							<Checkbox
+								id="showForecast"
+								bind:checked={localSettings.showForecast}
+							/>
+							<Label for="showForecast">Show Forecast</Label>
+						</div>
+					</CardContent>
+				</Card>
 
-				<div class="settings-section">
-					<h4>Display Elements</h4>
-					
-					<div class="checkbox-row">
-						<label>
-							<input type="checkbox" bind:checked={localSettings.showBGON} />
-							Show BG on Nightscout Icon
-						</label>
-					</div>
+				<Card>
+					<CardHeader>
+						<CardTitle>Display Elements</CardTitle>
+					</CardHeader>
+					<CardContent class="space-y-4">
+						<div class="flex items-center space-x-2">
+							<Checkbox
+								id="showBGON"
+								bind:checked={localSettings.showBGON}
+							/>
+							<Label for="showBGON">Show BG on Nightscout Icon</Label>
+						</div>
 
-					<div class="checkbox-row">
-						<label>
-							<input type="checkbox" bind:checked={localSettings.showIOB} />
-							Show IOB (Insulin on Board)
-						</label>
-					</div>
+						<div class="flex items-center space-x-2">
+							<Checkbox
+								id="showIOB"
+								bind:checked={localSettings.showIOB}
+							/>
+							<Label for="showIOB">Show IOB (Insulin on Board)</Label>
+						</div>
 
-					<div class="checkbox-row">
-						<label>
-							<input type="checkbox" bind:checked={localSettings.showCOB} />
-							Show COB (Carbs on Board)
-						</label>
-					</div>
+						<div class="flex items-center space-x-2">
+							<Checkbox
+								id="showCOB"
+								bind:checked={localSettings.showCOB}
+							/>
+							<Label for="showCOB">Show COB (Carbs on Board)</Label>
+						</div>
 
-					<div class="checkbox-row">
-						<label>
-							<input type="checkbox" bind:checked={localSettings.showBasal} />
-							Show Basal Rate
-						</label>
-					</div>
-				</div>
+						<div class="flex items-center space-x-2">
+							<Checkbox
+								id="showBasal"
+								bind:checked={localSettings.showBasal}
+							/>
+							<Label for="showBasal">Show Basal Rate</Label>
+						</div>
+					</CardContent>				</Card>
 			{/if}
 
 			<!-- Plugins Tab -->
 			{#if activeTab === 'plugins'}
-				<div class="settings-section">
-					<h4>Enable Plugins</h4>
-					<p class="section-description">
-						Select which plugins to display in your Nightscout interface.
-					</p>
-					
-					<div class="plugins-grid">
-						{#each pluginOptions as plugin}
-							<div class="plugin-item">
-								<label>
-									<input 
-										type="checkbox" 
+				<Card>
+					<CardHeader>
+						<CardTitle>Enable Plugins</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<p class="text-sm text-muted-foreground mb-4">
+							Select which plugins to display in your Nightscout interface.
+						</p>
+
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+							{#each pluginOptions as plugin}
+								<div class="flex items-center space-x-2 p-3 border rounded-lg bg-muted/50">
+									<Checkbox
+										id="plugin-{plugin.value}"
 										checked={isPluginEnabled(plugin.value)}
-										onchange={() => togglePlugin(plugin.value)}
+										onCheckedChange={() => togglePlugin(plugin.value)}
 									/>
-									{plugin.label}
-								</label>
-							</div>
-						{/each}
-					</div>
-				</div>
+									<Label for="plugin-{plugin.value}" class="text-sm font-medium">
+										{plugin.label}
+									</Label>
+								</div>
+							{/each}
+						</div>
+					</CardContent>
+				</Card>
 			{/if}
 		</div>
-
 		<!-- Action Buttons -->
 		<div class="drawer-footer">
-			<button class="reset-btn" onclick={resetToDefaults}>
+			<Button variant="destructive" onclick={resetToDefaults}>
 				Reset to Defaults
-			</button>
+			</Button>
 			<div class="action-buttons">
-				<button class="cancel-btn" onclick={() => isOpen = false}>
+				<Button variant="outline" onclick={() => isOpen = false}>
 					Cancel
-				</button>
-				<button class="save-btn" onclick={saveSettings}>
+				</Button>
+				<Button onclick={saveSettings}>
 					Save Settings
-				</button>
+				</Button>
 			</div>
 		</div>
 	</div>
 {/if}
 
 <style>
-	.settings-btn {
-		background: #757575;
-		color: white;
-		border: none;
-		border-radius: 8px;
-		padding: 12px 16px;
-		font-size: 18px;
-		cursor: pointer;
-		transition: all 0.2s ease;
-		box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-	}
-
-	.settings-btn:hover {
-		background: #616161;
-		transform: translateY(-2px);
-		box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-	}
-
-	.settings-btn.active {
-		background: #616161;
-	}
-
 	.settings-drawer {
 		position: fixed;
 		top: 0;
@@ -629,122 +696,16 @@
 		color: #333;
 	}
 
-	.close-btn {
-		background: none;
-		border: none;
-		font-size: 24px;
-		cursor: pointer;
-		color: #666;
-		padding: 0;
-		width: 30px;
-		height: 30px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
 	.tab-nav {
 		display: flex;
 		border-bottom: 1px solid #e0e0e0;
 		background: #fafafa;
 	}
 
-	.tab-btn {
-		flex: 1;
-		background: none;
-		border: none;
-		padding: 12px 16px;
-		cursor: pointer;
-		color: #666;
-		font-weight: 500;
-		transition: all 0.2s ease;
-		border-bottom: 2px solid transparent;
-	}
-
-	.tab-btn:hover {
-		background: #f0f0f0;
-		color: #333;
-	}
-
-	.tab-btn.active {
-		color: #2196F3;
-		border-bottom-color: #2196F3;
-		background: white;
-	}
-
 	.drawer-content {
 		flex: 1;
 		overflow-y: auto;
 		padding: 20px;
-	}
-
-	.settings-section {
-		margin-bottom: 30px;
-	}
-
-	.settings-section h4 {
-		margin: 0 0 16px 0;
-		color: #333;
-		font-size: 16px;
-		font-weight: 600;
-		border-bottom: 1px solid #e0e0e0;
-		padding-bottom: 8px;
-	}
-
-	.section-description {
-		margin: 0 0 16px 0;
-		color: #666;
-		font-size: 14px;
-		line-height: 1.4;
-	}
-
-	.input-row {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		margin-bottom: 12px;
-	}
-
-	.input-row label {
-		min-width: 140px;
-		font-weight: 500;
-		color: #333;
-		font-size: 14px;
-	}
-
-	.input-row input,
-	.input-row select {
-		flex: 1;
-		padding: 8px 12px;
-		border: 1px solid #ddd;
-		border-radius: 4px;
-		font-size: 14px;
-	}
-
-	.input-row input:focus,
-	.input-row select:focus {
-		outline: none;
-		border-color: #2196F3;
-		box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
-	}
-
-	.units {
-		color: #666;
-		font-size: 14px;
-		min-width: 50px;
-	}
-
-	.checkbox-row {
-		margin-bottom: 12px;
-	}
-
-	.checkbox-row label {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		cursor: pointer;
-		font-weight: 500;
-		color: #333;
 	}
 
 	.alarm-minutes {
@@ -776,46 +737,6 @@
 		gap: 4px;
 	}
 
-	.minute-chip button {
-		background: none;
-		border: none;
-		color: #1976d2;
-		cursor: pointer;
-		padding: 0;
-		width: 16px;
-		height: 16px;
-		border-radius: 50%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.minute-chip button:hover {
-		background: rgba(25, 118, 210, 0.1);
-	}
-
-	.plugins-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-		gap: 12px;
-	}
-
-	.plugin-item {
-		padding: 8px;
-		border: 1px solid #e0e0e0;
-		border-radius: 6px;
-		background: #fafafa;
-	}
-
-	.plugin-item label {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		cursor: pointer;
-		font-size: 14px;
-		color: #333;
-	}
-
 	.drawer-footer {
 		padding: 20px;
 		border-top: 1px solid #e0e0e0;
@@ -825,65 +746,15 @@
 		align-items: center;
 	}
 
-	.reset-btn {
-		background: #f44336;
-		color: white;
-		border: none;
-		padding: 10px 16px;
-		border-radius: 4px;
-		cursor: pointer;
-		font-size: 14px;
-		transition: background-color 0.2s ease;
-	}
-
-	.reset-btn:hover {
-		background: #d32f2f;
-	}
-
 	.action-buttons {
 		display: flex;
 		gap: 12px;
-	}
-
-	.cancel-btn {
-		background: #757575;
-		color: white;
-		border: none;
-		padding: 10px 20px;
-		border-radius: 4px;
-		cursor: pointer;
-		font-size: 14px;
-		transition: background-color 0.2s ease;
-	}
-
-	.cancel-btn:hover {
-		background: #616161;
-	}
-
-	.save-btn {
-		background: #4CAF50;
-		color: white;
-		border: none;
-		padding: 10px 20px;
-		border-radius: 4px;
-		cursor: pointer;
-		font-size: 14px;
-		font-weight: 500;
-		transition: background-color 0.2s ease;
-	}
-
-	.save-btn:hover {
-		background: #45a049;
 	}
 
 	@media (max-width: 768px) {
 		.settings-drawer {
 			width: 100vw;
 			left: 0;
-		}
-
-		.plugins-grid {
-			grid-template-columns: 1fr;
 		}
 	}
 </style>

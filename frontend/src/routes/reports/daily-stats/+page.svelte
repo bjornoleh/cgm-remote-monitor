@@ -9,6 +9,7 @@
     TableRow,
   } from "$lib/components/ui/table";
   import TIRPieChart from "$lib/components/charts/TIRPieChart.svelte";
+  import TirStackedChart from "$lib/components/reports/TIRStackedChart.svelte";
 
   let {
     data,
@@ -53,27 +54,6 @@
 
         // Only use actual glucose readings - no mock data
         const glucoseReadings = dayStats.glucoseReadings || [];
-
-        // Only calculate stats if we have real glucose readings
-        if (glucoseReadings.length === 0) {
-          return {
-            date: dayStats.date || new Date().toISOString().split("T")[0],
-            lowPercent:
-              dayStats.timeInRanges.low + dayStats.timeInRanges.severeLow,
-            normalPercent: dayStats.timeInRanges.target,
-            highPercent:
-              dayStats.timeInRanges.high + dayStats.timeInRanges.severeHigh,
-            readings: 0,
-            min: "N/A",
-            max: "N/A",
-            average: dayStats.averageGlucose.toFixed(1),
-            stdDev: "N/A",
-            percentile25: "N/A",
-            median: "N/A",
-            percentile75: "N/A",
-          };
-        }
-
         const min = Math.min(...glucoseReadings);
         const max = Math.max(...glucoseReadings);
         const percentile25 = calculatePercentile(glucoseReadings, 25);
@@ -83,10 +63,12 @@
         return {
           date: dayStats.date || new Date().toISOString().split("T")[0],
           lowPercent:
-            dayStats.timeInRanges.low + dayStats.timeInRanges.severeLow,
-          normalPercent: dayStats.timeInRanges.target,
+            dayStats.timeInRanges.percentages.low +
+            dayStats.timeInRanges.percentages.severeLow,
+          normalPercent: dayStats.timeInRanges.percentages.target,
           highPercent:
-            dayStats.timeInRanges.high + dayStats.timeInRanges.severeHigh,
+            dayStats.timeInRanges.percentages.high +
+            dayStats.timeInRanges.percentages.severeHigh,
           readings: glucoseReadings.length,
           min: min.toFixed(1),
           max: max.toFixed(1),
@@ -101,26 +83,6 @@
         };
       })
       .filter((stat): stat is NonNullable<typeof stat> => stat !== null);
-  });
-  // Pie chart data for current day TIR
-  const pieChartData = $derived.by(() => {
-    if (!currentStats?.timeInRanges) return [];
-
-    const tir = currentStats.timeInRanges;
-    return [
-      {
-        name: "Very Low (<54)",
-        value: tir.severeLow,
-        color: "rgb(239, 68, 68)",
-      }, // red-500      { name: "Low (54-69)", value: tir.low, color: "rgb(251, 146, 60)" }, // orange-400
-      { name: "Target (70-180)", value: tir.target, color: "rgb(34, 197, 94)" }, // green-500
-      { name: "High (181-250)", value: tir.high, color: "rgb(251, 191, 36)" }, // amber-400
-      {
-        name: "Very High (>250)",
-        value: tir.severeHigh,
-        color: "rgb(239, 68, 68)",
-      }, // red-500
-    ].filter((segment) => segment.value > 0); // Filter out 0-value segments
   });
 </script>
 
@@ -152,14 +114,13 @@
     </div>
   {:else}
     <!-- Time in Range Pie Chart -->
-    {#if pieChartData.length > 0}
-      <div class="bg-white shadow-lg rounded-lg p-4 md:p-6 mb-8">
-        <h2 class="text-xl font-semibold text-gray-700 mb-4">
-          Time in Range Distribution
-        </h2>
-        <TIRPieChart tirData={pieChartData} />
-      </div>
-    {/if}
+    <div class="bg-white shadow-lg rounded-lg p-4 md:p-6 mb-8">
+      <h2 class="text-xl font-semibold text-gray-700 mb-4">
+        Time in Range Distribution
+      </h2>
+      <TirStackedChart data={currentStats.timeInRanges} />
+      <!-- <TIRPieChart tirData={data.dailyStatsReport.analytics} /> -->
+    </div>
 
     <!-- Glycemic Variability Metrics -->
     {#if currentStats?.glycemicVariability}
