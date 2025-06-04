@@ -2,7 +2,6 @@ const path = require('path');
 const webpack = require('webpack');
 const pluginArray = [];
 const sourceMapType = 'source-map';
-const MomentTimezoneDataPlugin = require('moment-timezone-data-webpack-plugin');
 const projectRoot = path.resolve(__dirname, '..');
 
 /*
@@ -56,20 +55,13 @@ pluginArray.push(new webpack.ProvidePlugin({
   process: 'process/browser',
 }));
 
-// limit Timezone data from Moment
-
-pluginArray.push(new MomentTimezoneDataPlugin({
-  startYear: 2015,
-  endYear: 2035,
-}));
-
 if (process.env.NODE_ENV === 'development') {
   const ESLintPlugin = require('eslint-webpack-plugin');
   pluginArray.push(new ESLintPlugin({
     emitWarning: true,
     failOnError: false,
     failOnWarning: false,
-    formatter: require('eslint').CLIEngine.getFormatter('stylish'),
+    formatter: 'stylish',
     overrideConfig: {
       globals: {
         '$': 'writeable'
@@ -163,11 +155,11 @@ module.exports = {
   resolve: {
     fallback: {
       'process/browser': require.resolve('process/browser'),
-      events: require.resolve('events/')
+      events: require.resolve('events/'),
+      crypto: false
     },
     alias: {
       stream: 'stream-browserify',
-      crypto: 'crypto-browserify',
       buffer: 'buffer',
     }
   }

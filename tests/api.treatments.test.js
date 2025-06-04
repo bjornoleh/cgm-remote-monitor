@@ -1,10 +1,9 @@
 'use strict';
 
-var _ = require('lodash');
 var request = require('supertest');
 var should = require('should');
 var language = require('../lib/language')();
-var _moment = require('moment');
+const _dayjs = require('../lib/utils/dayjs');
 
 describe('Treatment API', function ( ) {
   this.timeout(10000);
@@ -47,9 +46,7 @@ describe('Treatment API', function ( ) {
             done(err);
           } else {
             self.ctx.treatments.list({}, function (err, list) {
-              var sorted = _.sortBy(list, function (treatment) {
-                return treatment.created_at;
-              });
+              var sorted = list.sort((a, b) => a.created_at.localeCompare(b.created_at));
               sorted.length.should.equal(2);
               sorted[0].glucose.should.equal(100);
               sorted[0].notes.should.equal('<img>');
@@ -85,31 +82,29 @@ describe('Treatment API', function ( ) {
 */
 
   it('post single treatments in zoned time format', function (done) {
-   
+
     var current_time = Date.now();
-    console.log('Testing date with local format: ', _moment(current_time).format("YYYY-MM-DDTHH:mm:ss.SSSZZ"));
-      
+    console.log('Testing date with local format: ', _dayjs(current_time).format("YYYY-MM-DDTHH:mm:ss.SSSZZ"));
+
     self.ctx.treatments().remove({ }, function ( ) {
       request(self.app)
         .post('/api/treatments/')
         .set('api-secret', api_secret_hash || '')
-        .send({eventType: 'Meal Bolus', created_at: _moment(current_time).format("YYYY-MM-DDTHH:mm:ss.SSSZZ"), carbs: '30', insulin: '2.00', glucose: 100, glucoseType: 'Finger', units: 'mg/dl'})
+        .send({eventType: 'Meal Bolus', created_at: _dayjs(current_time).format("YYYY-MM-DDTHH:mm:ss.SSSZZ"), carbs: '30', insulin: '2.00', glucose: 100, glucoseType: 'Finger', units: 'mg/dl'})
         .expect(200)
         .end(function (err) {
           if (err) {
             done(err);
           } else {
             self.ctx.treatments.list({}, function (err, list) {
-              var sorted = _.sortBy(list, function (treatment) {
-                return treatment.created_at;
-              });
+              var sorted = list.sort((a, b) => a.created_at.localeCompare(b.created_at));
               console.log(sorted);
               sorted.length.should.equal(1);
               sorted[0].glucose.should.equal(100);
               should.not.exist(sorted[0].eventTime);
               sorted[0].insulin.should.equal(2);
               sorted[0].carbs.should.equal(30);
-              var zonedTime = _moment(current_time).utc().format("YYYY-MM-DDTHH:mm:ss.SSS") + "Z";
+              var zonedTime = _dayjs(current_time).utc().format("YYYY-MM-DDTHH:mm:ss.SSS") + "Z";
               sorted[0].created_at.should.equal(zonedTime);
               sorted[0].utcOffset.should.equal(-1* new Date().getTimezoneOffset());
               done();
@@ -171,9 +166,7 @@ describe('Treatment API', function ( ) {
             done(err);
           } else {
             self.ctx.treatments.list({}, function (err, list) {
-              var sorted = _.sortBy(list, function (treatment) {
-                return treatment.created_at;
-              });
+              var sorted = list.sort((a, b) => a.created_at.localeCompare(b.created_at));
 
               if (sorted.length !== 3) {
                 console.info('unexpected result length, sorted treatments:', sorted);

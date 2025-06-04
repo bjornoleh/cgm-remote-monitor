@@ -92,10 +92,10 @@
     }
 
     @keyframes sk-bouncedelay {
-       0%, 80%, 100% { 
+       0%, 80%, 100% {
          -webkit-transform: scale(0);
          transform: scale(0);
-       } 40% { 
+       } 40% {
          -webkit-transform: scale(1.0);
          transform: scale(1.0);
     }
@@ -170,12 +170,11 @@
         <li><a id="reportlink" href="report" target="reports" class="translate">Reports</a></li>
         <li class="needsadminaccess"><a id="editprofilelink" href="profile" target="profileeditor" class="translate">Profile Editor</a></li>
         <li class="needsadminaccess foodcontrol"><a id="editfoodlink" href="food" target="foodeditor" class="translate">Food Editor</a></li>
-        <li class="needsadminaccess"><a id="admintoolslink" href="admin" target="admintools" class="translate">Admin Tools</a></li>
-        <li class="multilink">
+        <li class="needsadminaccess"><a id="admintoolslink" href="admin" target="admintools" class="translate">Admin Tools</a></li>        <li class="multilink">
           <a class="translate">Clock Views:</a>
-          <a id="bgclocklink" href="/clock/bgclock" class="translate multilink">Clock</a>
-          <a id="clockcolorlink" href="/clock/clock-color" class="translate multilink">Color</a>
-          <a id="clocklink" href="/clock/clock" class="translate multilink">Simple</a>
+          <a id="bgclocklink" href="/clock?face=bgclock" class="translate multilink">Clock</a>
+          <a id="clockcolorlink" href="/clock?face=clock-color" class="translate multilink">Color</a>
+          <a id="clocklink" href="/clock?face=clock" class="translate multilink">Simple</a>
           <a id="clockconfiglink" href="/clock/config" class="translate multilink">[+]</a>
         </li>
       </ul>

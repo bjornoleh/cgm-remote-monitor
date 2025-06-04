@@ -296,7 +296,7 @@ describe('Pebble Endpoint with Raw and IOB and COB', function ( ) {
       .expect(200)
       .end(function (err, res)  {
         var bgs = res.body.bgs;
-        bgs.length.should.equal(1);
+        bgs?.length.should.equal(1);
         var bg = bgs[0];
         bg.iob.should.equal('2.30');
         bg.cob.should.equal(0);

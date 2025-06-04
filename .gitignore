@@ -34,3 +34,7 @@ npm-debug.log
 # directories created by docker-compose.yml
 mongo-data/
 letsencrypt/
+
+dist/
+build/
+.svelte-kit

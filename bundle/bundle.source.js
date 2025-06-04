@@ -6,7 +6,6 @@ $ = require("jquery");
 
 require('jquery-ui-bundle');
 
-window._ = require('lodash');
 window.d3 = require('d3');
 
 require('jquery.tooltips');
@@ -18,14 +17,16 @@ require('../node_modules/flot/jquery.flot.time');
 require('../node_modules/flot/jquery.flot.pie');
 require('../node_modules/flot/jquery.flot.fillbetween');
 
-const moment = require('moment-timezone');
+const dayjs = require('../lib/utils/dayjs');
 
-window.moment = moment;
+window.dayjs = dayjs;
 
 window.Nightscout = window.Nightscout || {};
 
 var ctx = {
-    moment: moment
+    dayjs
+    /** {@deprecated} Keep 'moment' key for now to minimize breaking changes elsewhere, will be refactored later */
+    , moment: dayjs
 };
 
 window.Nightscout = {
