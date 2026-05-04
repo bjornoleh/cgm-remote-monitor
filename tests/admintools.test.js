@@ -30,7 +30,7 @@ var someData = {
     }
   ],
   '/api/v1/devicestatus/?find[created_at][$lte]=': {
-    n: 1
+    deletedCount: 1
   },
   '/api/v1/treatments.json?&find[created_at][$gte]=': [
       {
@@ -42,7 +42,7 @@ var someData = {
       }
     ],
   '/api/v1/treatments/?find[created_at][$lte]=': {
-    n: 1
+    deletedCount: 1
   },
   '/api/v1/entries.json?&find[date][$gte]=': [
       {
@@ -59,9 +59,31 @@ var someData = {
       }
     ],
   '/api/v1/entries/?find[date][$lte]=': {
-    n: 1
+    deletedCount: 1
+  },
+  '/api/v1/profile/?keep=': {
+    deletedCount: 2
   },
 };
+
+
+describe('delete status compatibility', function () {
+  var normalizeDeleteStatus = require('../lib/api/shared/delete-status');
+
+  it('should preserve legacy n count for MongoDB deletedCount results', function () {
+    normalizeDeleteStatus({deletedCount: 1}).should.eql({
+      deletedCount: 1
+      , n: 1
+    });
+  });
+
+  it('should preserve deletedCount for legacy n results', function () {
+    normalizeDeleteStatus({n: 1}).should.eql({
+      n: 1
+      , deletedCount: 1
+    });
+  });
+});
 
 
 describe('admintools', function ( ) {
@@ -70,8 +92,8 @@ describe('admintools', function ( ) {
   before(function (done) {
     benv.setup(function() {
 
-	  benv.require(__dirname + '/../node_modules/.cache/_ns_cache/public/js/bundle.app.js');
-          
+      benv.require(__dirname + '/../node_modules/.cache/_ns_cache/public/js/bundle.app.js');
+
       self.$ = $;
       
       self.localCookieStorage = self.localStorage = self.$.localStorage = require('./fixtures/localstorage');
@@ -115,6 +137,8 @@ describe('admintools', function ( ) {
             url = '/api/v1/treatments/?find[created_at][$lte]=';
           } else if (url.indexOf('/api/v1/entries/?find[date][$lte]=')===0) {
             url = '/api/v1/entries/?find[date][$lte]=';
+          } else if (url.indexOf('/api/v1/profile/?keep=')===0) {
+            url = '/api/v1/profile/?keep=';
           }
           return {
             done: function mockDone (fn) {
@@ -157,8 +181,6 @@ describe('admintools', function ( ) {
       let timer = d3.timer(function mockTimer() { });
       timer.stop();
       
-      var cookieStorageType = self.localStorage._type
-
       benv.expose({
         $: self.$
         , jQuery: self.$
@@ -166,7 +188,7 @@ describe('admintools', function ( ) {
         , serverSettings: serverSettings
         , localCookieStorage: self.localStorage
         , cookieStorageType: self.localStorage
-		, localStorage: self.localStorage
+        , localStorage: self.localStorage
         , io: {
           connect: function mockConnect ( ) {
             return {
@@ -264,6 +286,12 @@ describe('admintools', function ( ) {
 
     $('#admin_cleanentriesdb_0_html + button').click();
     $('#admin_cleanentriesdb_0_status').text().should.equal('1 records deleted'); // entries code result
+
+    $('#admin_cleanprofiledb_0_html + button').text().should.equal('Delete old profile records'); // profile button
+    $('#admin_cleanprofiledb_0_status').text().should.equal(''); // profile init result
+
+    $('#admin_cleanprofiledb_0_html + button').click();
+    $('#admin_cleanprofiledb_0_status').text().should.equal('2 records deleted'); // profile code result
 
     done();
   });
